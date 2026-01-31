@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  /* Lite HMS Brand Colors */
+  --primary: #0ea5e9; /* Sky 500 */
+  --primary-foreground: #ffffff;
+  --secondary: #64748b; /* Slate 500 */
+  --secondary-foreground: #ffffff;
+  --accent: #f0f9ff; /* Sky 50 */
+  --accent-foreground: #0c4a6e; /* Sky 900 */
+
+  --success: #22c55e;
+  --warning: #eab308;
+  --error: #ef4444;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #0ea5e9;
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+
+    --primary: #38bdf8; /* Sky 400 */
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
