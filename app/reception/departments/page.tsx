@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { AppLayout } from "@/components/AppLayout";
 
 export default function DepartmentsPage() {
   const { user } = useAuth();
@@ -37,7 +38,6 @@ export default function DepartmentsPage() {
     setLoading(true);
     try {
       await axios.post(`${apiUrl}/departments`, formData);
-      alert("Department Created Successfully");
       setFormData({ name: "", description: "" });
       fetchDepartments();
     } catch (error: any) {
@@ -62,15 +62,21 @@ export default function DepartmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-sky-600">Manage Departments</h1>
-        <Button variant="outline" onClick={() => router.back()}>
-          Back to Dashboard
-        </Button>
+    <AppLayout>
+      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10 no-print">
+        <h1 className="text-xl font-bold text-slate-800">Manage Departments</h1>
+        <div className="flex gap-4 items-center">
+          <Button
+            variant="ghost"
+            className="text-sm font-semibold text-slate-500 hover:text-sky-600"
+            onClick={() => router.back()}
+          >
+            Back
+          </Button>
+        </div>
       </nav>
 
-      <main className="p-6 max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+      <main className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Creation Form */}
         <div className="md:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
           <h2 className="text-lg font-semibold mb-4 text-slate-800">
@@ -115,7 +121,7 @@ export default function DepartmentsPage() {
             {departments.length > 0 ? (
               departments.map((dept: any) => (
                 <div
-                  key={dept._id}
+                  key={dept.id}
                   className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-100"
                 >
                   <div>
@@ -131,7 +137,7 @@ export default function DepartmentsPage() {
                   <Button
                     variant="ghost"
                     className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    onClick={() => handleDelete(dept._id)}
+                    onClick={() => handleDelete(dept.id)}
                   >
                     Delete
                   </Button>
@@ -145,6 +151,6 @@ export default function DepartmentsPage() {
           </div>
         </div>
       </main>
-    </div>
+    </AppLayout>
   );
 }

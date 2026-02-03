@@ -31,15 +31,24 @@ export default function BillingPage() {
   const apiUrl = "/api";
 
   useEffect(() => {
-    const fetchPatients = async () => {
+    const fetchRequiredData = async () => {
       try {
-        const res = await axios.get(`${apiUrl}/patients`);
-        setPatients(res.data);
+        const [patientsRes, visitsRes] = await Promise.all([
+          axios.get(`${apiUrl}/patients`),
+          axios.get(`${apiUrl}/visits?status=waiting_for_payment`),
+        ]);
+
+        const pendingPatientIDs = visitsRes.data.map((v: any) => v.patientID);
+        const filteredPatients = patientsRes.data.filter((p: any) =>
+          pendingPatientIDs.includes(p.patientID),
+        );
+
+        setPatients(filteredPatients);
       } catch (error) {
-        console.error("Failed to fetch patients");
+        console.error("Failed to fetch patients or visits");
       }
     };
-    fetchPatients();
+    fetchRequiredData();
   }, [apiUrl]);
 
   useEffect(() => {
@@ -48,7 +57,7 @@ export default function BillingPage() {
     const fetchDues = async () => {
       try {
         const res = await axios.get(
-          `${apiUrl}/billing/pending-dues/${selectedPatientId}`,
+          `${apiUrl}/billing?patientID=${selectedPatientId}&type=dues`,
         );
         if (res.data.length > 0) {
           setItems(
@@ -71,7 +80,7 @@ export default function BillingPage() {
     const fetchSummary = async () => {
       try {
         const res = await axios.get(
-          `${apiUrl}/billing/summary/${selectedPatientId}`,
+          `${apiUrl}/billing?patientID=${selectedPatientId}`,
         );
         setSummary(res.data);
       } catch (error) {
@@ -119,7 +128,6 @@ export default function BillingPage() {
         paymentMode: paymentMode,
         totalAmount: calculateTotal(),
       });
-      alert("Invoice Generated Successfully");
       router.push("/reception");
     } catch (error) {
       alert("Billing Failed");
@@ -134,7 +142,7 @@ export default function BillingPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6">
-      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
           <h1 className="text-xl font-bold text-slate-800">Generate Invoice</h1>
           <Button variant="outline" onClick={() => router.back()}>
@@ -155,7 +163,7 @@ export default function BillingPage() {
             >
               <option value="">-- Choose Patient --</option>
               {patients.map((p: any) => (
-                <option key={p._id} value={p.patientID}>
+                <option key={p.id} value={p.patientID}>
                   {p.name} ({p.patientID})
                 </option>
               ))}
@@ -284,15 +292,17 @@ export default function BillingPage() {
                     {summary.recentInvoices.map((inv: any, idx: number) => (
                       <tr key={idx} className="border-b border-slate-100">
                         <td className="px-4 py-3">
-                          {new Date(inv.date).toLocaleDateString()}
+                          {new Date(inv.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-4 py-3 font-medium text-slate-900">
                           {inv.invoiceNumber}
                         </td>
-                        <td className="px-4 py-3">{inv.items}</td>
+                        <td className="px-4 py-3">
+                          {inv.items.map((i: any) => i.description).join(", ")}
+                        </td>
                         <td className="px-4 py-3">{inv.paymentMode}</td>
                         <td className="px-4 py-3 text-right font-bold text-green-600">
-                          ₹{inv.amount}
+                          ₹{inv.totalAmount}
                         </td>
                       </tr>
                     ))}

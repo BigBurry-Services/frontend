@@ -32,12 +32,11 @@ export async function POST(req: NextRequest) {
     const totalPatients = await Patient.countDocuments();
     const patientID = `PAT-${new Date().getFullYear()}-${String(totalPatients + 1).padStart(3, "0")}`;
 
-    const newPatient = new Patient({
+    const newPatient = await Patient.create({
       ...body,
       patientID,
     });
 
-    await newPatient.save();
     return NextResponse.json(newPatient, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });

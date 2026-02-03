@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
+import { AppLayout } from "@/components/AppLayout";
+
 export default function VisitDetailsPage({
   params,
 }: {
@@ -21,7 +23,7 @@ export default function VisitDetailsPage({
     params.then((unwrapped) => setId(unwrapped.id));
   }, [params]);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  const apiUrl = "/api";
 
   useEffect(() => {
     if (!id) return;
@@ -51,15 +53,76 @@ export default function VisitDetailsPage({
   if (!visit) return <div className="p-10">Loading Visit...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <AppLayout>
       <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-sky-600">Visit Details</h1>
-        <Button variant="outline" onClick={() => router.back()}>
-          Back
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button variant="outline" onClick={() => router.back()}>
+            ← Back
+          </Button>
+          <h1 className="text-xl font-bold text-sky-600">Visit Details</h1>
+        </div>
+        <div>
+          {visit.status !== "cancelled" && visit.status !== "completed" && (
+            <Button
+              variant="outline"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              onClick={async () => {
+                if (
+                  !confirm(
+                    "Are you sure you want to cancel this visit? This action cannot be undone.",
+                  )
+                )
+                  return;
+                try {
+                  await axios.patch(`${apiUrl}/visits/${id}/status`, {
+                    status: "cancelled",
+                  });
+                  setVisit({ ...visit, status: "cancelled" });
+                  // Optionally refresh or show toast
+                } catch (error) {
+                  alert("Failed to cancel visit");
+                }
+              }}
+            >
+              ✕ Cancel Visit
+            </Button>
+          )}
+
+          {visit.status === "cancelled" &&
+            (() => {
+              const visitDate = new Date(visit.visitDate);
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              return visitDate >= today;
+            })() && (
+              <Button
+                variant="outline"
+                className="border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300"
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to reopen this visit?"))
+                    return;
+                  try {
+                    // logic to revert status, for simplicity setting to 'waiting'
+                    await axios.patch(`${apiUrl}/visits/${id}/status`, {
+                      status: "waiting",
+                    });
+                    // We might need to refresh full visit to get derived status or just set simple one
+                    setVisit({ ...visit, status: "waiting" });
+                    // Reloading data to be safe about derived statuses if any
+                    const visitRes = await axios.get(`${apiUrl}/visits/${id}`);
+                    setVisit(visitRes.data);
+                  } catch (error) {
+                    alert("Failed to reopen visit");
+                  }
+                }}
+              >
+                ↻ Reopen Visit
+              </Button>
+            )}
+        </div>
       </nav>
 
-      <main className="p-6 max-w-5xl mx-auto space-y-6">
+      <main className="p-6 space-y-6">
         {/* Header Info */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 grid grid-cols-2 gap-4">
           <div>
@@ -223,6 +286,6 @@ export default function VisitDetailsPage({
           </div>
         )}
       </main>
-    </div>
+    </AppLayout>
   );
 }

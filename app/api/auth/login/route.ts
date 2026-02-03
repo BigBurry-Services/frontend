@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     const payload = {
       username: user.username,
-      sub: user._id,
+      sub: user.id,
       role: user.role,
       name: user.name,
     };

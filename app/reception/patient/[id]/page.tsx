@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { useEffect, useState, use } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { AppLayout } from "@/components/AppLayout";
 
 export default function PatientDetailsPage({
   params,
@@ -26,12 +27,15 @@ export default function PatientDetailsPage({
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [selectedDoctors, setSelectedDoctors] = useState<string[]>([]);
   const [visitReason, setVisitReason] = useState("");
+  const [visitDate, setVisitDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
 
   useEffect(() => {
     params.then((unwrapped) => setId(unwrapped.id));
   }, [params]);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+  const apiUrl = "/api";
 
   useEffect(() => {
     // Fetch Doctors
@@ -48,11 +52,10 @@ export default function PatientDetailsPage({
       await axios.post(`${apiUrl}/visits`, {
         patientID: id, // Use the ID from params
         doctorIDs: selectedDoctors,
-        visitDate: new Date(),
+        visitDate: new Date(visitDate),
         reason: visitReason,
         // Status defaults to waiting in backend
       });
-      alert("Visit Created! Token Generated.");
       setShowVisitModal(false);
       // Refresh logic
       const visitsRes = await axios.get(`${apiUrl}/visits?patientID=${id}`);
@@ -87,8 +90,8 @@ export default function PatientDetailsPage({
   if (!patient) return <div className="p-10">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
+    <AppLayout>
+      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center no-print">
         <div className="flex items-center gap-4">
           <Button variant="outline" onClick={() => router.back()}>
             ← Back
@@ -102,7 +105,7 @@ export default function PatientDetailsPage({
         </div>
       </nav>
 
-      <main className="p-6 max-w-4xl mx-auto space-y-6">
+      <main className="p-6 space-y-6">
         {/* Patient Info Card */}
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <div className="flex justify-between items-start">
@@ -144,7 +147,7 @@ export default function PatientDetailsPage({
               <tbody>
                 {visits.map((v: any) => (
                   <tr
-                    key={v._id}
+                    key={v.id}
                     className="border-b border-slate-100 hover:bg-slate-50"
                   >
                     <td className="px-4 py-3 text-slate-500">
@@ -188,7 +191,7 @@ export default function PatientDetailsPage({
                       <Button
                         variant="outline"
                         className="h-8 text-xs ml-2"
-                        onClick={() => router.push(`/reception/visit/${v._id}`)}
+                        onClick={() => router.push(`/reception/visit/${v.id}`)}
                       >
                         View
                       </Button>
@@ -225,7 +228,7 @@ export default function PatientDetailsPage({
               <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-2">
                 {doctors.map((d: any) => (
                   <label
-                    key={d._id}
+                    key={d.id}
                     className="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-1 rounded"
                   >
                     <input
@@ -251,6 +254,18 @@ export default function PatientDetailsPage({
                   </label>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                Visit Date
+              </label>
+              <input
+                type="date"
+                className="w-full p-2 text-sm border rounded-md focus:outline-none focus:border-sky-500"
+                value={visitDate}
+                onChange={(e) => setVisitDate(e.target.value)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -281,6 +296,6 @@ export default function PatientDetailsPage({
           </div>
         </div>
       )}
-    </div>
+    </AppLayout>
   );
 }

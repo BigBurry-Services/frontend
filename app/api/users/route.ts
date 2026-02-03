@@ -9,8 +9,12 @@ export async function GET(req: NextRequest) {
     await dbConnect();
     const { searchParams } = new URL(req.url);
     const role = searchParams.get("role");
-    const filter = role ? { role } : {};
-    const users = await User.find(filter).select("-password");
+    const filter = role ? { role: role as any } : {};
+    const rawUsers = await User.find(filter);
+    // Manually exclude passwords
+    const users = rawUsers.map(
+      ({ password, ...userWithoutPassword }) => userWithoutPassword,
+    );
     return NextResponse.json(users);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -33,13 +37,12 @@ export async function POST(req: NextRequest) {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(body.password, salt);
 
-    const newUser = new User({
+    const newUser = await User.create({
       ...body,
       password: hashedPassword,
     });
 
-    await newUser.save();
-    const { password, ...userWithoutPassword } = newUser.toObject();
+    const { password, ...userWithoutPassword } = newUser;
     return NextResponse.json(userWithoutPassword, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });

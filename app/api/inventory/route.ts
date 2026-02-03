@@ -18,8 +18,7 @@ export async function POST(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
-    const newItem = new Inventory(body);
-    await newItem.save();
+    const newItem = await Inventory.create(body);
     return NextResponse.json(newItem, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -31,30 +30,10 @@ export async function PATCH(req: NextRequest) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { id, name, quantity, attrs } = body;
-
-    if (quantity && name) {
-      // Dispense logic
-      const item = await Inventory.findOne({ name });
-      if (!item)
-        return NextResponse.json(
-          { message: "Medicine not found" },
-          { status: 404 },
-        );
-      if (item.stock < quantity)
-        return NextResponse.json(
-          { message: "Insufficient stock" },
-          { status: 400 },
-        );
-      item.stock -= quantity;
-      await item.save();
-      return NextResponse.json(item);
-    }
+    const { id, attrs } = body;
 
     if (id && attrs) {
-      const updatedItem = await Inventory.findByIdAndUpdate(id, attrs, {
-        new: true,
-      });
+      const updatedItem = await Inventory.update(id, attrs);
       return NextResponse.json(updatedItem);
     }
 

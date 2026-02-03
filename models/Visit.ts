@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import { JsonStorage } from "../lib/jsonStorage";
 
 export enum VisitStatus {
   WAITING = "waiting",
@@ -8,7 +8,8 @@ export enum VisitStatus {
   WAITING_FOR_PAYMENT = "waiting_for_payment",
 }
 
-export interface IVisit extends Document {
+export interface IVisit {
+  id: string;
   tokenNumber: number;
   patientID: string;
   doctorIDs: string[];
@@ -26,6 +27,10 @@ export interface IVisit extends Document {
       instruction: string;
       quantity: number;
     }[];
+    services: {
+      name: string;
+      price: number;
+    }[];
   }[];
   status: string;
   paymentStatus: string;
@@ -34,52 +39,6 @@ export interface IVisit extends Document {
   updatedAt: Date;
 }
 
-const VisitSchema: Schema = new Schema(
-  {
-    tokenNumber: { type: Number, required: true },
-    patientID: { type: String, required: true },
-    doctorIDs: { type: [String], required: true },
-    notes: { type: String },
-    reason: { type: String },
-    prescriptions: [
-      {
-        name: { type: String },
-        dosage: { type: String },
-        instruction: { type: String },
-      },
-    ],
-    consultations: [
-      {
-        doctorID: { type: String },
-        doctorName: { type: String },
-        status: {
-          type: String,
-          enum: Object.values(VisitStatus),
-          default: VisitStatus.WAITING,
-        },
-        notes: { type: String },
-        prescriptions: [
-          {
-            name: { type: String },
-            dosage: { type: String },
-            instruction: { type: String },
-            quantity: { type: Number, default: 1 },
-          },
-        ],
-      },
-    ],
-    status: { type: String, default: "Waiting" },
-    paymentStatus: {
-      type: String,
-      enum: ["pending", "paid"],
-      default: "pending",
-    },
-    visitDate: { type: Date, default: Date.now },
-  },
-  { timestamps: true },
-);
-
-const Visit: Model<IVisit> =
-  mongoose.models.Visit || mongoose.model<IVisit>("Visit", VisitSchema);
+const Visit = new JsonStorage<IVisit>("visits");
 
 export default Visit;

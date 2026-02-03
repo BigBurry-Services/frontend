@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { AppLayout } from "@/components/AppLayout";
 
 export default function ManageBeds() {
   const { user } = useAuth();
@@ -39,12 +40,10 @@ export default function ManageBeds() {
     try {
       if (isEditing) {
         await axios.put(`${apiUrl}/resources/${formData.resourceID}`, formData);
-        alert("Bed Updated Successfully");
         setIsEditing(false);
         setEditId("");
       } else {
         await axios.post(`${apiUrl}/resources`, formData);
-        alert("Bed Created Successfully");
       }
       setFormData({ name: "", resourceID: "", type: "ward_bed" });
       fetchBeds();
@@ -76,15 +75,8 @@ export default function ManageBeds() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-sky-600">Manage Beds & Rooms</h1>
-        <Button variant="outline" onClick={() => router.back()}>
-          Back to Dashboard
-        </Button>
-      </nav>
-
-      <main className="p-6 max-w-4xl mx-auto space-y-6">
+    <AppLayout>
+      <main className="p-6 space-y-6">
         <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
           <h2 className="text-lg font-semibold mb-4 text-slate-800">
             {isEditing ? "Edit Resource" : "Add New Resource"}
@@ -156,7 +148,7 @@ export default function ManageBeds() {
             <tbody>
               {beds.map((bed: any) => (
                 <tr
-                  key={bed._id}
+                  key={bed.id}
                   className="border-b border-slate-100 hover:bg-slate-50"
                 >
                   <td className="px-4 py-3 font-medium text-slate-900">
@@ -186,6 +178,6 @@ export default function ManageBeds() {
           </table>
         </div>
       </main>
-    </div>
+    </AppLayout>
   );
 }

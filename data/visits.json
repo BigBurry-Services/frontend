@@ -1,0 +1,94 @@
+[
+  {
+    "patientID": "PAT-2026-001",
+    "doctorIDs": [
+      "akhil"
+    ],
+    "visitDate": "2026-01-31T12:58:17.114Z",
+    "reason": "leg pain",
+    "tokenNumber": 1,
+    "status": "Completed",
+    "consultations": [
+      {
+        "doctorID": "akhil",
+        "doctorName": "akhil",
+        "status": "completed",
+        "prescriptions": [
+          {
+            "name": "med1",
+            "dosage": "dsfas",
+            "instruction": "sadfa"
+          }
+        ],
+        "notes": "asdfasdf"
+      }
+    ],
+    "id": "1769864297127n6f80",
+    "createdAt": "2026-01-31T12:58:17.127Z",
+    "updatedAt": "2026-01-31T13:06:11.703Z",
+    "paymentStatus": "paid"
+  },
+  {
+    "patientID": "PAT-2026-001",
+    "doctorIDs": [
+      "akhil"
+    ],
+    "visitDate": "2026-02-01T04:58:02.457Z",
+    "reason": "tooth pain",
+    "tokenNumber": 1,
+    "status": "Consulting with Dr. akhil",
+    "consultations": [
+      {
+        "doctorID": "akhil",
+        "doctorName": "akhil",
+        "status": "in_consultation",
+        "prescriptions": []
+      }
+    ],
+    "id": "1769921882776hb0uh",
+    "createdAt": "2026-02-01T04:58:02.776Z",
+    "updatedAt": "2026-02-01T05:24:12.081Z"
+  },
+  {
+    "patientID": "PAT-2026-002",
+    "doctorIDs": [
+      "akhil"
+    ],
+    "visitDate": "2026-02-02T12:49:35.101Z",
+    "reason": "leg pain",
+    "tokenNumber": 1,
+    "status": "cancelled",
+    "consultations": [
+      {
+        "doctorID": "akhil",
+        "doctorName": "akhil",
+        "status": "waiting",
+        "prescriptions": []
+      }
+    ],
+    "id": "1770036575120zkws4",
+    "createdAt": "2026-02-02T12:49:35.120Z",
+    "updatedAt": "2026-02-02T13:56:18.016Z"
+  },
+  {
+    "patientID": "PAT-2026-002",
+    "doctorIDs": [
+      "akhil"
+    ],
+    "visitDate": "2026-02-12T00:00:00.000Z",
+    "reason": "chumma",
+    "tokenNumber": 1,
+    "status": "Waiting for Dr. akhil",
+    "consultations": [
+      {
+        "doctorID": "akhil",
+        "doctorName": "akhil",
+        "status": "waiting",
+        "prescriptions": []
+      }
+    ],
+    "id": "177004190923830b79",
+    "createdAt": "2026-02-02T14:18:29.238Z",
+    "updatedAt": "2026-02-02T14:18:29.238Z"
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "name": "bedder",
+    "resourceID": "bed 1",
+    "type": "ward_bed",
+    "id": "1769863872447ekdxz",
+    "createdAt": "2026-01-31T12:51:12.448Z",
+    "updatedAt": "2026-02-02T13:45:58.468Z",
+    "isOccupied": true,
+    "currentPatientID": "PAT-2026-001",
+    "admissionDate": "2026-02-02",
+    "expectedDischargeDate": "2026-02-03"
+  },
+  {
+    "name": "bede",
+    "resourceID": "bed2",
+    "type": "ward_bed",
+    "id": "1769863934663izphz",
+    "createdAt": "2026-01-31T12:52:14.663Z",
+    "updatedAt": "2026-01-31T13:07:05.225Z",
+    "isOccupied": false,
+    "currentPatientID": null,
+    "admissionDate": null,
+    "expectedDischargeDate": null
+  },
+  {
+    "name": "1",
+    "resourceID": "1",
+    "type": "ward_bed",
+    "id": "1769870030129hd0zn",
+    "createdAt": "2026-01-31T14:33:50.129Z",
+    "updatedAt": "2026-01-31T14:33:50.129Z"
+  },
+  {
+    "name": "2",
+    "resourceID": "2",
+    "type": "ward_bed",
+    "id": "1769870033912gresn",
+    "createdAt": "2026-01-31T14:33:53.912Z",
+    "updatedAt": "2026-01-31T14:33:53.912Z"
+  },
+  {
+    "name": "3",
+    "resourceID": "3",
+    "type": "ward_bed",
+    "id": "17698700580136oqqb",
+    "createdAt": "2026-01-31T14:34:18.013Z",
+    "updatedAt": "2026-01-31T14:34:18.013Z"
+  },
+  {
+    "name": "4",
+    "resourceID": "4",
+    "type": "ward_bed",
+    "id": "1769870062876apvsh",
+    "createdAt": "2026-01-31T14:34:22.876Z",
+    "updatedAt": "2026-01-31T14:34:22.876Z"
+  }
+]

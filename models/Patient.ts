@@ -1,6 +1,7 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import { JsonStorage } from "../lib/jsonStorage";
 
-export interface IPatient extends Document {
+export interface IPatient {
+  id: string;
   patientID: string;
   name: string;
   age: number;
@@ -12,20 +13,6 @@ export interface IPatient extends Document {
   updatedAt: Date;
 }
 
-const PatientSchema: Schema = new Schema(
-  {
-    patientID: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    age: { type: Number, required: true },
-    gender: { type: String, required: true },
-    mobile: { type: String, required: true, index: true },
-    address: { type: String },
-    guardianName: { type: String },
-  },
-  { timestamps: true },
-);
-
-const Patient: Model<IPatient> =
-  mongoose.models.Patient || mongoose.model<IPatient>("Patient", PatientSchema);
+const Patient = new JsonStorage<IPatient>("patients");
 
 export default Patient;

@@ -43,7 +43,7 @@ async function getPendingDues(patientID: string) {
           potentialItems.push({
             description: `Consultation: Dr. ${doctor.name}`,
             amount: doctor.consultationFee,
-            visitID: (visit._id as any).toString(),
+            visitID: visit.id,
           });
         }
       }
@@ -60,9 +60,24 @@ async function getPendingDues(patientID: string) {
               potentialItems.push({
                 description: `Medicine: ${p.name} (x${quantity})`,
                 amount: medicine.unitPrice * quantity,
-                visitID: (visit._id as any).toString(),
+                visitID: visit.id,
               });
             }
+          }
+        }
+      }
+    }
+
+    // C. Service Charges
+    if (visit.consultations) {
+      for (const c of visit.consultations) {
+        if (c.services) {
+          for (const s of c.services) {
+            potentialItems.push({
+              description: `Service: ${s.name}`,
+              amount: s.price,
+              visitID: visit.id,
+            });
           }
         }
       }
@@ -104,9 +119,11 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(dues);
       }
 
-      const invoices = await Invoice.find({ patientID }).sort({
-        createdAt: -1,
-      });
+      const rawInvoices = await Invoice.find({ patientID });
+      const invoices = rawInvoices.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      );
       const totalPaid = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
       const pendingItems = await getPendingDues(patientID);
       const totalPending = pendingItems.reduce(
@@ -121,7 +138,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const invoices = await Invoice.find().sort({ createdAt: -1 });
+    const rawInvoices = await Invoice.find();
+    const invoices = rawInvoices.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
     return NextResponse.json(invoices);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -143,13 +164,11 @@ export async function POST(req: NextRequest) {
       0,
     );
 
-    const newInvoice = new Invoice({
+    const savedInvoice = await Invoice.create({
       ...body,
       invoiceNumber,
       totalAmount,
     });
-
-    const savedInvoice = await newInvoice.save();
 
     // Check for visits where ALL items are now paid
     const visitIDs = Array.from(
@@ -161,7 +180,7 @@ export async function POST(req: NextRequest) {
       const duesForVisit = remainingDues.filter((d) => d.visitID === visitID);
 
       if (duesForVisit.length === 0) {
-        await Visit.findByIdAndUpdate(visitID, {
+        await Visit.update(visitID, {
           paymentStatus: "paid",
           status: "Completed",
         });

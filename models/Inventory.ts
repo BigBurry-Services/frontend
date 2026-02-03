@@ -1,8 +1,9 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import { JsonStorage } from "../lib/jsonStorage";
 
-export interface IInventory extends Document {
+export interface IInventory {
+  id: string;
   name: string;
-  stock: number;
+  categoryID: string;
   unitPrice: number;
   batchNumber?: string;
   expiryDate?: Date;
@@ -10,19 +11,6 @@ export interface IInventory extends Document {
   updatedAt: Date;
 }
 
-const InventorySchema: Schema = new Schema(
-  {
-    name: { type: String, required: true, unique: true },
-    stock: { type: Number, required: true },
-    unitPrice: { type: Number, required: true },
-    batchNumber: { type: String },
-    expiryDate: { type: Date },
-  },
-  { timestamps: true },
-);
-
-const Inventory: Model<IInventory> =
-  mongoose.models.Inventory ||
-  mongoose.model<IInventory>("Inventory", InventorySchema);
+const Inventory = new JsonStorage<IInventory>("inventory");
 
 export default Inventory;

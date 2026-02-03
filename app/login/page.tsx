@@ -48,6 +48,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
       <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg border border-slate-100">
         <div className="text-center mb-8">
+          <img
+            src="/phoenix_logo.svg"
+            alt="Phoenix International HMS"
+            className="h-24 mx-auto mb-6"
+          />
           <h1 className="text-2xl font-bold text-slate-900">
             Phoenix International HMS
           </h1>

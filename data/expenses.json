@@ -1,0 +1,20 @@
+[
+  {
+    "description": "had tea",
+    "amount": 20,
+    "category": "Utilities",
+    "date": "2026-01-31",
+    "id": "1769870964599b6ygu",
+    "createdAt": "2026-01-31T14:49:24.599Z",
+    "updatedAt": "2026-01-31T14:49:24.599Z"
+  },
+  {
+    "description": "biscuit",
+    "amount": 50,
+    "category": "Utilities",
+    "date": "2026-02-01",
+    "id": "1769917240237mvi7z",
+    "createdAt": "2026-02-01T03:40:40.238Z",
+    "updatedAt": "2026-02-01T03:40:40.238Z"
+  }
+]

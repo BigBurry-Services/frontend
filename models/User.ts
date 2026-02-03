@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+import { JsonStorage } from "../lib/jsonStorage";
 
 export enum UserRole {
   ADMIN = "admin",
@@ -7,7 +7,8 @@ export enum UserRole {
   PHARMACIST = "pharmacist",
 }
 
-export interface IUser extends Document {
+export interface IUser {
+  id: string;
   username: string;
   password?: string;
   role: UserRole;
@@ -19,20 +20,6 @@ export interface IUser extends Document {
   updatedAt: Date;
 }
 
-const UserSchema: Schema = new Schema(
-  {
-    username: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
-    role: { type: String, required: true, enum: Object.values(UserRole) },
-    name: { type: String, required: true },
-    specialization: { type: String },
-    department: { type: String },
-    consultationFee: { type: Number },
-  },
-  { timestamps: true },
-);
-
-const User: Model<IUser> =
-  mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+const User = new JsonStorage<IUser>("users");
 
 export default User;

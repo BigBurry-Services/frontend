@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { AppLayout } from "@/components/AppLayout";
 
 export default function StaffManagement() {
   const { user } = useAuth();
@@ -22,6 +23,7 @@ export default function StaffManagement() {
     consultationFee: "",
   });
   const [loading, setLoading] = useState(false);
+  const [roleFilter, setRoleFilter] = useState("all");
 
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,11 +60,9 @@ export default function StaffManagement() {
       if (editingUser) {
         // Update existing user
         await axios.patch(`${apiUrl}/users/${editingUser.username}`, formData);
-        alert("Staff Member Updated Successfully");
       } else {
         // Create new user
         await axios.post(`${apiUrl}/users`, formData);
-        alert("Staff Member Added Successfully");
       }
 
       setFormData({
@@ -131,15 +131,8 @@ export default function StaffManagement() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-sky-600">Manage Staff</h1>
-        <Button variant="outline" onClick={() => router.back()}>
-          Back to Dashboard
-        </Button>
-      </nav>
-
-      <main className="p-6 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+    <AppLayout>
+      <main className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Registration Form */}
         <div className="md:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
           <h2 className="text-lg font-semibold mb-4 text-slate-800">
@@ -215,7 +208,7 @@ export default function StaffManagement() {
                   >
                     <option value="">Select Department</option>
                     {departments.map((d: any) => (
-                      <option key={d._id} value={d.name}>
+                      <option key={d.id} value={d.name}>
                         {d.name}
                       </option>
                     ))}
@@ -259,9 +252,22 @@ export default function StaffManagement() {
             <h2 className="text-lg font-semibold text-slate-800">
               Current Staff
             </h2>
-            <Button variant="ghost" onClick={fetchStaff}>
-              Refresh
-            </Button>
+            <div className="flex gap-4">
+              <select
+                className="h-10 rounded-md border border-slate-300 px-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+              >
+                <option value="all">All Roles</option>
+                <option value="doctor">Doctors</option>
+                <option value="pharmacist">Pharmacists</option>
+                <option value="receptionist">Receptionists</option>
+                <option value="admin">Admins</option>
+              </select>
+              <Button variant="ghost" onClick={fetchStaff}>
+                Refresh
+              </Button>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -277,55 +283,59 @@ export default function StaffManagement() {
                 </tr>
               </thead>
               <tbody>
-                {staff.map((s: any) => (
-                  <tr
-                    key={s._id}
-                    className="border-b border-slate-100 hover:bg-slate-50"
-                  >
-                    <td className="px-4 py-3">
-                      <span className="capitalize px-2 py-1 bg-slate-100 rounded-md text-xs font-medium">
-                        {s.role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {s.name}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">{s.username}</td>
-                    <td className="px-4 py-3 text-slate-500">
-                      {s.specialization || "-"}
-                      {s.consultationFee && (
-                        <div className="text-xs text-green-600 font-semibold mt-1">
-                          Fee: ₹{s.consultationFee}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-slate-500">
-                      {s.department ? (
-                        <span className="text-sky-600 font-medium">
-                          {s.department}
+                {staff
+                  .filter(
+                    (s: any) => roleFilter === "all" || s.role === roleFilter,
+                  )
+                  .map((s: any) => (
+                    <tr
+                      key={s.id}
+                      className="border-b border-slate-100 hover:bg-slate-50"
+                    >
+                      <td className="px-4 py-3">
+                        <span className="capitalize px-2 py-1 bg-slate-100 rounded-md text-xs font-medium">
+                          {s.role}
                         </span>
-                      ) : (
-                        <span className="text-slate-400 italic">
-                          Unassigned
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button
-                        variant="ghost"
-                        className="text-sky-600 hover:text-sky-700 hover:bg-sky-50 h-8 text-xs"
-                        onClick={() => startEdit(s)}
-                      >
-                        Edit
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        {s.name}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">{s.username}</td>
+                      <td className="px-4 py-3 text-slate-500">
+                        {s.specialization || "-"}
+                        {s.consultationFee && (
+                          <div className="text-xs text-green-600 font-semibold mt-1">
+                            Fee: ₹{s.consultationFee}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-slate-500">
+                        {s.department ? (
+                          <span className="text-sky-600 font-medium">
+                            {s.department}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 italic">
+                            Unassigned
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button
+                          variant="ghost"
+                          className="text-sky-600 hover:text-sky-700 hover:bg-sky-50 h-8 text-xs"
+                          onClick={() => startEdit(s)}
+                        >
+                          Edit
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
         </div>
       </main>
-    </div>
+    </AppLayout>
   );
 }

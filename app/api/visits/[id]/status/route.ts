@@ -10,31 +10,32 @@ export async function PATCH(
   try {
     await dbConnect();
     const { id } = await params;
-    const { status, notes, prescriptions, doctorID } = await req.json();
+    const { status, notes, prescriptions, services, doctorID } =
+      await req.json();
+
+    const visit = await Visit.findById(id);
+
+    if (!visit) {
+      return NextResponse.json({ message: "Visit not found" }, { status: 404 });
+    }
 
     if (doctorID) {
-      const visit = await Visit.findOne({
-        _id: id,
-        "consultations.doctorID": doctorID,
-      });
-
-      if (!visit) {
-        return NextResponse.json(
-          { message: "Visit or consultation not found" },
-          { status: 404 },
-        );
-      }
-
       // Update the specific consultation in the array
       const consultationIndex = visit.consultations.findIndex(
         (c) => c.doctorID === doctorID,
       );
-      if (consultationIndex !== -1) {
-        visit.consultations[consultationIndex].status = status;
-        if (notes) visit.consultations[consultationIndex].notes = notes;
-        if (prescriptions)
-          visit.consultations[consultationIndex].prescriptions = prescriptions;
+      if (consultationIndex === -1) {
+        return NextResponse.json(
+          { message: "Consultation not found" },
+          { status: 404 },
+        );
       }
+
+      visit.consultations[consultationIndex].status = status;
+      if (notes) visit.consultations[consultationIndex].notes = notes;
+      if (prescriptions)
+        visit.consultations[consultationIndex].prescriptions = prescriptions;
+      if (services) visit.consultations[consultationIndex].services = services;
 
       // Dynamic Status Logic
       if (status === VisitStatus.IN_CONSULTATION) {
@@ -55,16 +56,16 @@ export async function PATCH(
         }
       }
 
-      await visit.save();
+      await Visit.update(id, visit);
       return NextResponse.json(visit);
     }
 
-    // Legacy fallback
-    const updatedVisit = await Visit.findByIdAndUpdate(
-      id,
-      { status, notes, prescriptions },
-      { new: true },
-    );
+    // Legacy fallback or generic update
+    const updatedVisit = await Visit.update(id, {
+      status,
+      notes,
+      prescriptions,
+    });
 
     return NextResponse.json(updatedVisit);
   } catch (error: any) {

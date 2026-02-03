@@ -1,0 +1,24 @@
+[
+  {
+    "name": "AMAL BENNY",
+    "age": 34,
+    "gender": "Male",
+    "mobile": "56443534534",
+    "address": "chully po",
+    "patientID": "PAT-2026-001",
+    "id": "1769864049640lz8sa",
+    "createdAt": "2026-01-31T12:54:09.640Z",
+    "updatedAt": "2026-01-31T12:54:09.640Z"
+  },
+  {
+    "name": "appu",
+    "age": 19,
+    "gender": "Male",
+    "mobile": "08075107490",
+    "address": "7/130, PUTHUSSERY COMPLEX",
+    "patientID": "PAT-2026-002",
+    "id": "1770036564289d6uvt",
+    "createdAt": "2026-02-02T12:49:24.289Z",
+    "updatedAt": "2026-02-02T12:49:24.289Z"
+  }
+]

@@ -1,0 +1,40 @@
+[
+  {
+    "patientID": "PAT-2026-001",
+    "patientName": "AMAL BENNY",
+    "items": [
+      {
+        "description": "Consultation: Dr. akhil",
+        "amount": 200,
+        "visitID": "1769864297127n6f80"
+      },
+      {
+        "description": "Medicine: med1 (x1)",
+        "amount": 100,
+        "visitID": "1769864297127n6f80"
+      }
+    ],
+    "paymentMode": "Cash",
+    "totalAmount": 300,
+    "invoiceNumber": "INV-2026-0001",
+    "id": "1769864771694wenaz",
+    "createdAt": "2026-01-31T13:06:11.694Z",
+    "updatedAt": "2026-01-31T13:06:11.694Z"
+  },
+  {
+    "patientID": "OTC",
+    "patientName": "Walk-in",
+    "paymentMode": "Cash",
+    "items": [
+      {
+        "description": "chapel",
+        "amount": 300
+      }
+    ],
+    "invoiceNumber": "INV-2026-0002",
+    "totalAmount": 300,
+    "id": "1769917381840kvlpx",
+    "createdAt": "2026-02-01T03:43:01.840Z",
+    "updatedAt": "2026-02-01T03:43:01.840Z"
+  }
+]
