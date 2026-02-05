@@ -8,6 +8,34 @@ import axios from "axios";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppLayout } from "@/components/AppLayout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Search,
+  Plus,
+  Pill,
+  AlertTriangle,
+  ChevronRight,
+  Package,
+  AlertCircle,
+  Download,
+  Upload,
+} from "lucide-react";
+import { useRef } from "react";
+import { formatDate } from "@/lib/utils";
 
 export default function PharmacyDashboard() {
   const { user, logout } = useAuth();
@@ -16,26 +44,157 @@ export default function PharmacyDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [patientQueue, setPatientQueue] = useState<any[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [patients, setPatients] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const apiUrl = "/api";
 
   const fetchData = async () => {
     try {
-      const [catRes, medRes] = await Promise.all([
+      const [catRes, medRes, visitsRes, patientsRes] = await Promise.all([
         axios.get(`${apiUrl}/categories`),
         axios.get(`${apiUrl}/inventory`),
+        axios.get(`${apiUrl}/visits`),
+        axios.get(`${apiUrl}/patients`),
       ]);
       setCategories(catRes.data);
       setMedicines(medRes.data);
+      setPatients(patientsRes.data);
+
+      // Filter visits with "Waiting for Medicine" status
+      const waitingForMedicine = visitsRes.data.filter(
+        (v: any) => v.status === "Waiting for Medicine",
+      );
+      setPatientQueue(waitingForMedicine);
     } catch (error) {
       console.error("Failed to fetch data");
+    }
+  };
+
+  const handleDispenseMedicine = async (visitId: string) => {
+    try {
+      // Get the visit to extract prescriptions
+      const visitRes = await axios.get(`${apiUrl}/visits/${visitId}`);
+      const visit = visitRes.data;
+
+      // Collect all prescriptions from all consultations
+      const allPrescriptions: any[] = [];
+      visit.consultations?.forEach((consultation: any) => {
+        consultation.prescriptions?.forEach((prescription: any) => {
+          allPrescriptions.push(prescription);
+        });
+      });
+
+      // Get all inventory items
+      const inventoryRes = await axios.get(`${apiUrl}/inventory`);
+      const allInventory = inventoryRes.data;
+
+      // Process each prescription and reduce stock
+      const stockErrors: string[] = [];
+      const inventoryUpdates: any[] = [];
+
+      for (const prescription of allPrescriptions) {
+        const medicineName = prescription.name;
+        const requiredQuantity = prescription.quantity || 0;
+
+        if (requiredQuantity === 0) continue;
+
+        // Find matching medicine in inventory (case-insensitive)
+        const medicine = allInventory.find(
+          (inv: any) => inv.name.toLowerCase() === medicineName.toLowerCase(),
+        );
+
+        if (!medicine) {
+          stockErrors.push(`${medicineName}: Not found in inventory`);
+          continue;
+        }
+
+        // Get available batches (non-expired, sorted by addedDate - FIFO)
+        const now = new Date();
+        const availableBatches = (medicine.batches || [])
+          .filter(
+            (batch: any) =>
+              new Date(batch.expiryDate) > now && batch.quantity > 0,
+          )
+          .sort(
+            (a: any, b: any) =>
+              new Date(a.addedDate).getTime() - new Date(b.addedDate).getTime(),
+          );
+
+        // Calculate total available stock
+        const totalAvailable = availableBatches.reduce(
+          (sum: number, batch: any) => sum + batch.quantity,
+          0,
+        );
+
+        if (totalAvailable < requiredQuantity) {
+          stockErrors.push(
+            `${medicineName}: Insufficient stock (need ${requiredQuantity}, have ${totalAvailable})`,
+          );
+          continue;
+        }
+
+        // Deduct from batches using FIFO
+        let remainingToDeduct = requiredQuantity;
+        const updatedBatches = medicine.batches
+          .map((batch: any) => {
+            if (remainingToDeduct <= 0) return batch;
+            if (new Date(batch.expiryDate) <= now) return batch; // Skip expired
+            if (batch.quantity <= 0) return batch; // Skip empty
+
+            const deductAmount = Math.min(batch.quantity, remainingToDeduct);
+            remainingToDeduct -= deductAmount;
+
+            return {
+              ...batch,
+              quantity: batch.quantity - deductAmount,
+            };
+          })
+          .filter((batch: any) => batch.quantity > 0); // Remove empty batches
+
+        // Store update for this medicine
+        inventoryUpdates.push({
+          id: medicine.id,
+          data: {
+            ...medicine,
+            batches: updatedBatches,
+          },
+        });
+      }
+
+      // If there are stock errors, show them and abort
+      if (stockErrors.length > 0) {
+        alert("Cannot dispense medicines:\n\n" + stockErrors.join("\n"));
+        return;
+      }
+
+      // Apply all inventory updates
+      for (const update of inventoryUpdates) {
+        await axios.patch(`${apiUrl}/inventory/${update.id}`, update.data);
+      }
+
+      // Update visit status to "Waiting for Payment"
+      await axios.patch(`${apiUrl}/visits/${visitId}`, {
+        ...visit,
+        status: "Waiting for Payment",
+      });
+
+      setSelectedPatient(null);
+      fetchData(); // Refresh the queue
+      alert(
+        "Medicines dispensed successfully! Stock updated. Patient moved to payment queue.",
+      );
+    } catch (error) {
+      console.error("Dispense error:", error);
+      alert("Failed to dispense medicines");
     }
   };
 
   useEffect(() => {
     fetchData();
   }, []);
-
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
@@ -51,20 +210,146 @@ export default function PharmacyDashboard() {
     }
   };
 
+  const exportInventoryToCSV = () => {
+    const headers = [
+      "ID",
+      "Medicine Name",
+      "Category",
+      "Batch Number",
+      "Stock",
+      "Unit Price",
+      "Expiry Date",
+    ];
+    const csvData = medicines.map((m) => {
+      const category =
+        categories.find((c) => c.id === m.categoryID)?.name || "Uncategorized";
+      const totalStock =
+        m.batches?.reduce((sum: number, b: any) => sum + b.quantity, 0) || 0;
+      return [
+        m.id,
+        `"${m.name}"`,
+        `"${category}"`,
+        `"${m.batchNumber || ""}"`,
+        totalStock,
+        m.unitPrice,
+        formatDate(m.expiryDate),
+      ].join(",");
+    });
+
+    const csvString = [headers.join(","), ...csvData].join("\n");
+    const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `Pharmacy_Inventory_${new Date().toISOString().split("T")[0]}.csv`,
+    );
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportCSV = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm("Are you sure you want to import medicines from this CSV?"))
+      return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split("\n");
+      // Skip header
+      const dataLines = lines.slice(1).filter((line) => line.trim() !== "");
+
+      let errorCount = 0;
+
+      for (const line of dataLines) {
+        const parts = line.split(",").map((f) => f.replace(/"/g, "").trim());
+        if (parts.length < 5) continue;
+
+        const [
+          ,
+          name,
+          categoryName,
+          batchNumber,
+          stock,
+          unitPrice,
+          expiryDate,
+        ] = parts;
+
+        let targetCategoryID = categories.find(
+          (c) => c.name.toLowerCase() === categoryName.toLowerCase(),
+        )?.id;
+
+        // If category doesn't exist, create it or use "General"
+        if (!targetCategoryID) {
+          try {
+            const newCat = await axios.post(`${apiUrl}/categories`, {
+              name: categoryName || "General",
+            });
+            targetCategoryID = newCat.data.id;
+            // Refresh local categories to avoid duplicates in the same import run
+            const updatedCats = await axios.get(`${apiUrl}/categories`);
+            setCategories(updatedCats.data);
+          } catch (err) {
+            continue;
+          }
+        }
+
+        try {
+          // Standard inventory payload (Note: Backend structure might vary, adapting to common pattern)
+          await axios.post(`${apiUrl}/inventory`, {
+            name,
+            categoryID: targetCategoryID,
+            batchNumber,
+            quantity: Number(stock),
+            unitPrice: Number(unitPrice),
+            expiryDate: new Date(expiryDate).toISOString(),
+          });
+        } catch (err) {
+          errorCount++;
+        }
+      }
+
+      alert(`Import completed! Errors: ${errorCount}. Refreshing inventory...`);
+      fetchData();
+    };
+    reader.readAsText(file);
+  };
+
   if (!user || (user.role !== "admin" && user.role !== "pharmacist")) {
-    return <div className="p-10">Access Denied</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="text-muted-foreground">
+            You do not have permission to view this page.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   const nearExpiryMedicines = medicines.filter((m: any) => {
-    if (!m.expiryDate) return false;
-    const expiry = new Date(m.expiryDate);
+    if (!m.batches || m.batches.length === 0) return false;
     const now = new Date();
     const twoMonthsFromNow = new Date(
       now.getFullYear(),
       now.getMonth() + 2,
       now.getDate(),
     );
-    return expiry >= now && expiry <= twoMonthsFromNow;
+
+    // Check if any batch is near expiry
+    return m.batches.some((batch: any) => {
+      if (!batch.expiryDate) return false;
+      const expiry = new Date(batch.expiryDate);
+      return expiry >= now && expiry <= twoMonthsFromNow;
+    });
   });
 
   const filteredMedicines = searchTerm.trim()
@@ -78,67 +363,131 @@ export default function PharmacyDashboard() {
 
   return (
     <AppLayout>
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-slate-800">
-            Pharmacy Dashboard
-          </h1>
-          <span className="text-slate-400">|</span>
-          <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Pharmacist {user.username}
-          </span>
-        </div>
-        <div className="flex gap-3">
-          <Button onClick={() => setIsModalOpen(true)}>
-            + Add New Category
-          </Button>
-          <ThemeToggle />
-        </div>
-      </nav>
-
-      <div className="bg-sky-600 px-6 py-8">
-        <div>
-          <div className="relative max-w-2xl">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg
-                className="h-5 w-5 text-sky-300"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
+      <div className="flex flex-col h-full space-y-6 p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Pharmacy Dashboard
+            </h1>
+            <p className="text-muted-foreground">
+              Manage inventory, categories, and track expirations.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              variant="outline"
+              className="flex-1 md:flex-none border-sky-200 text-sky-700 bg-sky-50 hover:bg-sky-100"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import CSV
+            </Button>
             <input
-              type="text"
-              placeholder="Search medicines by name or batch number..."
-              className="block w-full pl-11 pr-4 py-4 bg-white/10 border border-sky-400/30 rounded-2xl text-white placeholder-sky-200 focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/20 transition-all backdrop-blur-md"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".csv"
+              onChange={handleImportCSV}
             />
+            <Button
+              onClick={exportInventoryToCSV}
+              variant="outline"
+              className="flex-1 md:flex-none border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="w-full md:w-auto"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
           </div>
         </div>
-      </div>
 
-      <main className="p-6 space-y-6">
+        {/* Patient Queue Section */}
+        {patientQueue.length > 0 && (
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Pill className="h-5 w-5" />
+                Patients Waiting for Medicine ({patientQueue.length})
+              </CardTitle>
+              <CardDescription>
+                Click on a patient to view prescribed medications
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {patientQueue.map((visit: any) => {
+                  const patient = patients.find(
+                    (p) => p.patientID === visit.patientID,
+                  );
+                  const allPrescriptions =
+                    visit.consultations?.flatMap(
+                      (c: any) => c.prescriptions || [],
+                    ) || [];
+
+                  return (
+                    <Card
+                      key={visit.id}
+                      className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-primary"
+                      onClick={() => setSelectedPatient({ visit, patient })}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full inline-block mb-1">
+                              Token #{visit.tokenNumber}
+                            </p>
+                            <h3 className="font-bold text-lg">
+                              {patient?.name || visit.patientID}
+                            </h3>
+                          </div>
+                        </div>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <p>Patient ID: {visit.patientID}</p>
+                          <p>Prescriptions: {allPrescriptions.length} items</p>
+                          <p className="text-xs">
+                            Date: {formatDate(visit.visitDate)}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Search Section */}
+        <div className="relative">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search medicines by name or batch number..."
+            className="pl-9 h-12 text-lg bg-background shadow-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
         {/* Search Results */}
         {searchTerm.trim() !== "" && (
-          <div className="bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-800">
+              <h2 className="text-xl font-semibold">
                 Search Results ({filteredMedicines.length})
               </h2>
-              <button
+              <Button
+                variant="ghost"
+                className="text-muted-foreground"
                 onClick={() => setSearchTerm("")}
-                className="text-sm text-sky-600 font-semibold hover:underline"
               >
                 Clear Search
-              </button>
+              </Button>
             </div>
 
             {filteredMedicines.length > 0 ? (
@@ -151,40 +500,47 @@ export default function PharmacyDashboard() {
                     <Link
                       key={m.id}
                       href={`/pharmacy/category/${m.categoryID}`}
-                      className="group p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-sky-50 hover:border-sky-200 transition-all flex justify-between items-center"
+                      className="group block"
                     >
-                      <div>
-                        <h3 className="font-bold text-slate-900 group-hover:text-sky-700 transition-colors capitalize">
-                          {m.name}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
-                            {category?.name || "Uncategorized"}
-                          </span>
-                          {m.batchNumber && (
-                            <span className="text-[10px] text-slate-400">
-                              #{m.batchNumber}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-bold text-slate-600">
-                          ₹{m.unitPrice}
-                        </p>
-                        <p
-                          className={`text-[10px] mt-0.5 ${new Date(m.expiryDate) < new Date() ? "text-red-500 font-bold" : "text-slate-400"}`}
-                        >
-                          Exp: {new Date(m.expiryDate).toLocaleDateString()}
-                        </p>
-                      </div>
+                      <Card className="hover:shadow-md transition-all border-l-4 border-l-primary/20 hover:border-l-primary">
+                        <CardContent className="p-4 flex justify-between items-start">
+                          <div>
+                            <h3 className="font-bold text-lg group-hover:text-primary transition-colors capitalize">
+                              {m.name}
+                            </h3>
+                            <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <span className="text-xs bg-muted px-2 py-1 rounded-md font-medium uppercase tracking-wider">
+                                {category?.name || "Uncategorized"}
+                              </span>
+                              {m.batchNumber && (
+                                <span className="text-xs text-muted-foreground">
+                                  #{m.batchNumber}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-lg">₹{m.unitPrice}</p>
+                            <p
+                              className={`text-xs mt-1 ${
+                                new Date(m.expiryDate) < new Date()
+                                  ? "text-destructive font-bold"
+                                  : "text-muted-foreground"
+                              }`}
+                            >
+                              Exp: {formatDate(m.expiryDate)}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </Link>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-8 text-slate-400 italic">
-                No medicines found matching "{searchTerm}"
+              <div className="text-center py-12 text-muted-foreground bg-muted/10 rounded-xl border border-dashed">
+                <Package className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                <p>No medicines found matching "{searchTerm}"</p>
               </div>
             )}
           </div>
@@ -192,64 +548,50 @@ export default function PharmacyDashboard() {
 
         {/* Near Expiry Alert Section */}
         {nearExpiryMedicines.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
+          <Card className="border-amber-200 bg-amber-50/50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <CardTitle className="text-amber-900">Expiry Alerts</CardTitle>
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-amber-900">
-                  Global Expiry Alerts
-                </h2>
-                <p className="text-sm text-amber-700">
-                  Medicines across all categories expiring within 2 months
-                </p>
+              <CardDescription className="text-amber-700">
+                Medicines expiring within the next 2 months
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {nearExpiryMedicines.map((m: any) => (
+                  <div
+                    key={m.id}
+                    className="bg-white border border-amber-100 rounded-lg p-3 flex justify-between items-center shadow-sm"
+                  >
+                    <div>
+                      <h3 className="font-semibold text-slate-800 text-sm">
+                        {m.name}
+                      </h3>
+                      <p className="text-xs text-slate-500">
+                        {categories.find((c: any) => c.id === m.categoryID)
+                          ?.name || "Uncategorized"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-amber-600">
+                        {formatDate(m.expiryDate)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {nearExpiryMedicines.map((m: any) => (
-                <div
-                  key={m.id}
-                  className="bg-white border border-amber-100 rounded-lg p-3 flex justify-between items-center"
-                >
-                  <div>
-                    <h3 className="font-semibold text-slate-800 text-sm">
-                      {m.name}
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      {categories.find((c: any) => c.id === m.categoryID)
-                        ?.name || "Uncategorized"}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-amber-600">
-                      {new Date(m.expiryDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Categories Grid */}
         <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-slate-800">
+          <h2 className="text-2xl font-bold tracking-tight">
             Medicine Categories
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {categories.map((cat: any) => {
               const count = medicines.filter(
                 (m) => m.categoryID === cat.id,
@@ -258,91 +600,50 @@ export default function PharmacyDashboard() {
                 <Link
                   key={cat.id}
                   href={`/pharmacy/category/${cat.id}`}
-                  className="group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-sky-300 transition-all"
+                  className="group block"
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="p-3 bg-sky-50 rounded-xl text-sky-600 group-hover:bg-sky-600 group-hover:text-white transition-colors">
-                      <svg
-                        className="w-6 h-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-1 capitalize">
-                    {cat.name}
-                  </h3>
-                  <p className="text-sm text-slate-500">{count} Medicines</p>
-                  <div className="mt-4 flex items-center text-sky-600 font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                    View Catalogue
-                    <svg
-                      className="w-4 h-4 ml-1"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
+                  <Card className="hover:shadow-lg transition-all border-t-4 border-t-transparent hover:border-t-primary">
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                          <Pill className="h-6 w-6" />
+                        </div>
+                      </div>
+                      <h3 className="text-lg font-bold mb-1 capitalize">
+                        {cat.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {count} Medicines
+                      </p>
+                      <div className="mt-4 flex items-center text-primary font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                        View Catalogue
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </div>
+                    </CardContent>
+                  </Card>
                 </Link>
               );
             })}
 
-            <button
+            <Button
+              variant="outline"
+              className="h-auto flex flex-col items-center justify-center p-6 border-dashed border-2 hover:border-primary hover:bg-primary/5 gap-2"
               onClick={() => setIsModalOpen(true)}
-              className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-sky-300 hover:text-sky-500 hover:bg-sky-50 transition-all"
             >
-              <svg
-                className="w-8 h-8 mb-2"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              <span className="font-semibold text-sm">Add Category</span>
-            </button>
+              <div className="p-4 rounded-full bg-muted group-hover:bg-background transition-colors">
+                <Plus className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
+              </div>
+              <span className="font-semibold text-sm">Add New Category</span>
+            </Button>
           </div>
 
           {categories.length === 0 && (
-            <div className="text-center py-20 bg-white rounded-3xl border border-slate-100 shadow-sm">
-              <div className="mb-4 inline-flex p-4 bg-slate-50 rounded-full text-slate-300">
-                <svg
-                  className="w-12 h-12"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
-                  />
-                </svg>
+            <div className="text-center py-20 bg-muted/10 rounded-3xl border border-dashed">
+              <div className="mb-4 inline-flex p-4 bg-muted rounded-full text-muted-foreground">
+                <Package className="h-12 w-12" />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">
-                No Categories Yet
-              </h3>
-              <p className="text-slate-500 max-w-xs mx-auto mb-6">
+              <h3 className="text-xl font-bold mb-2">No Categories Yet</h3>
+              <p className="text-muted-foreground max-w-xs mx-auto mb-6">
                 Create your first category to start organizing your medicine
                 catalogue.
               </p>
@@ -352,61 +653,153 @@ export default function PharmacyDashboard() {
             </div>
           )}
         </div>
-      </main>
+      </div>
 
       {/* Add Category Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-sm overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <h2 className="text-lg font-bold text-slate-800">
-                Add New Category
-              </h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            <form onSubmit={handleAddCategory} className="p-6">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Add New Category</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddCategory} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="categoryName">Category Name</Label>
               <Input
-                label="Category Name"
-                placeholder="e.g. Ayurveda"
+                id="categoryName"
+                placeholder="e.g. Antibiotics"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
                 required
                 autoFocus
               />
-              <div className="flex gap-3 pt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" className="flex-1">
-                  Create
-                </Button>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Create</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Prescription Details Modal */}
+      {selectedPatient && (
+        <Dialog
+          open={!!selectedPatient}
+          onOpenChange={() => setSelectedPatient(null)}
+        >
+          <DialogContent className="sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Prescribed Medications</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {/* Patient Info */}
+              <Card>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Patient Name</p>
+                      <p className="font-semibold">
+                        {selectedPatient.patient?.name || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Patient ID</p>
+                      <p className="font-semibold">
+                        {selectedPatient.visit?.patientID}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Token Number</p>
+                      <p className="font-semibold">
+                        #{selectedPatient.visit?.tokenNumber}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Visit Date</p>
+                      <p className="font-semibold">
+                        {formatDate(selectedPatient.visit?.visitDate)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Prescriptions */}
+              <div className="space-y-2">
+                <h3 className="font-semibold text-sm">Prescribed Medicines</h3>
+                <div className="border rounded-lg divide-y max-h-96 overflow-y-auto">
+                  {selectedPatient.visit?.consultations?.map(
+                    (consultation: any, idx: number) => (
+                      <div key={idx} className="p-4 space-y-2">
+                        <p className="text-xs text-muted-foreground font-semibold">
+                          Prescribed by Dr.{" "}
+                          {consultation.doctorName || consultation.doctorID}
+                        </p>
+                        {consultation.prescriptions &&
+                        consultation.prescriptions.length > 0 ? (
+                          <div className="space-y-2">
+                            {consultation.prescriptions.map(
+                              (med: any, medIdx: number) => (
+                                <div
+                                  key={medIdx}
+                                  className="flex justify-between items-start p-2 bg-muted/30 rounded"
+                                >
+                                  <div>
+                                    <p className="font-medium">{med.name}</p>
+                                    {med.dosage && (
+                                      <p className="text-xs text-muted-foreground">
+                                        Dosage: {med.dosage}
+                                      </p>
+                                    )}
+                                    {med.instruction && (
+                                      <p className="text-xs text-muted-foreground">
+                                        Instructions: {med.instruction}
+                                      </p>
+                                    )}
+                                  </div>
+                                  {med.quantity && (
+                                    <span className="text-sm font-semibold">
+                                      Qty: {med.quantity}
+                                    </span>
+                                  )}
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground italic">
+                            No prescriptions
+                          </p>
+                        )}
+                      </div>
+                    ),
+                  )}
+                </div>
               </div>
-            </form>
-          </div>
-        </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedPatient(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() =>
+                  handleDispenseMedicine(selectedPatient.visit?.id)
+                }
+              >
+                Mark as Dispensed
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </AppLayout>
   );

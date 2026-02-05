@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Inventory from "@/models/Inventory";
+import StockLog from "@/models/StockLog";
 
 // GET /api/inventory
 export async function GET() {
@@ -19,6 +20,25 @@ export async function POST(req: NextRequest) {
     await dbConnect();
     const body = await req.json();
     const newItem = await Inventory.create(body);
+
+    // 1. Log Initial Stock (IN)
+    if (newItem.batches && newItem.batches.length > 0) {
+      const totalQty = newItem.batches.reduce(
+        (sum: number, b: any) => sum + Number(b.quantity),
+        0,
+      );
+      if (totalQty > 0) {
+        await StockLog.create({
+          itemId: newItem.id,
+          itemName: newItem.name,
+          change: totalQty,
+          type: "IN",
+          reason: "Initial Stock",
+          timestamp: new Date(),
+        });
+      }
+    }
+
     return NextResponse.json(newItem, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });

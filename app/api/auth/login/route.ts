@@ -3,6 +3,7 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import AuditLog from "@/models/AuditLog";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
@@ -35,6 +36,14 @@ export async function POST(req: NextRequest) {
     };
 
     const token = jwt.sign(payload, JWT_SECRET, { expiresIn: "1d" });
+
+    // Log the login event
+    await AuditLog.create({
+      userId: user.id,
+      username: user.username,
+      action: "LOGIN",
+      timestamp: new Date(),
+    });
 
     return NextResponse.json({
       access_token: token,

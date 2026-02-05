@@ -9,6 +9,14 @@ export interface IPatient {
   mobile: string;
   address?: string;
   guardianName?: string;
+  documents?: {
+    id: string;
+    name: string;
+    type: string;
+    url: string;
+    size: number;
+    uploadedAt: Date;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }

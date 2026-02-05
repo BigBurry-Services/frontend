@@ -7,6 +7,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 
 import { AppLayout } from "@/components/AppLayout";
+import { cn, formatDate } from "@/lib/utils";
 
 export default function VisitDetailsPage({
   params,
@@ -54,18 +55,26 @@ export default function VisitDetailsPage({
 
   return (
     <AppLayout>
-      <nav className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" onClick={() => router.back()}>
+      <nav className="border-b border-border px-4 py-2 flex justify-between items-center bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40 w-full no-print">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs uppercase border-border"
+            onClick={() => router.back()}
+          >
             ← Back
           </Button>
-          <h1 className="text-xl font-bold text-sky-600">Visit Details</h1>
+          <h1 className="text-xs uppercase tracking-widest text-muted-foreground">
+            Visit Details
+          </h1>
         </div>
         <div>
           {visit.status !== "cancelled" && visit.status !== "completed" && (
             <Button
               variant="outline"
-              className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              size="sm"
+              className="h-7 px-3 text-xs uppercase border-border hover:bg-destructive hover:text-destructive-foreground transition-all"
               onClick={async () => {
                 if (
                   !confirm(
@@ -78,7 +87,6 @@ export default function VisitDetailsPage({
                     status: "cancelled",
                   });
                   setVisit({ ...visit, status: "cancelled" });
-                  // Optionally refresh or show toast
                 } catch (error) {
                   alert("Failed to cancel visit");
                 }
@@ -97,18 +105,16 @@ export default function VisitDetailsPage({
             })() && (
               <Button
                 variant="outline"
-                className="border-sky-200 text-sky-600 hover:bg-sky-50 hover:text-sky-700 hover:border-sky-300"
+                size="sm"
+                className="h-7 px-3 text-xs uppercase border-border hover:bg-primary hover:text-primary-foreground transition-all"
                 onClick={async () => {
                   if (!confirm("Are you sure you want to reopen this visit?"))
                     return;
                   try {
-                    // logic to revert status, for simplicity setting to 'waiting'
                     await axios.patch(`${apiUrl}/visits/${id}/status`, {
                       status: "waiting",
                     });
-                    // We might need to refresh full visit to get derived status or just set simple one
                     setVisit({ ...visit, status: "waiting" });
-                    // Reloading data to be safe about derived statuses if any
                     const visitRes = await axios.get(`${apiUrl}/visits/${id}`);
                     setVisit(visitRes.data);
                   } catch (error) {
@@ -122,125 +128,132 @@ export default function VisitDetailsPage({
         </div>
       </nav>
 
-      <main className="p-6 space-y-6">
+      <main className="p-2 md:p-6 space-y-6 w-full">
         {/* Header Info */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 grid grid-cols-2 gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-800">
-              Visit Token #{visit.tokenNumber}
-            </h2>
-            <p className="text-sm text-slate-500">
-              {new Date(visit.visitDate).toLocaleDateString()}{" "}
-              {new Date(visit.visitDate).toLocaleTimeString()}
-            </p>
-            <div className="mt-2">
+        <div className="bg-card p-6 rounded-xl border border-border shadow-sm grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <div>
+              <h2 className="text-sm text-foreground uppercase tracking-tighter">
+                Visit Token #{visit.tokenNumber}
+              </h2>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {formatDate(visit.visitDate)}{" "}
+                {new Date(visit.visitDate).toLocaleTimeString()}
+              </p>
+            </div>
+            <div>
               <span
-                className={`px-2 py-1 rounded-full text-xs font-semibold
-                        ${
-                          visit.status === "completed"
-                            ? "bg-green-100 text-green-700"
-                            : visit.status === "cancelled"
-                              ? "bg-red-100 text-red-700"
-                              : "bg-yellow-100 text-yellow-700"
-                        }
-                    `}
+                className={cn(
+                  "px-2 py-0.5 rounded text-xs uppercase tracking-tighter border bg-secondary text-secondary-foreground border-border",
+                )}
               >
                 Overall Status: {visit.status}
               </span>
             </div>
             {visit.reason && (
-              <div className="mt-4 p-3 bg-indigo-50 border border-indigo-100 rounded-lg">
-                <p className="text-xs font-bold text-indigo-400 uppercase tracking-wider mb-1">
+              <div className="p-3 border border-border rounded-lg bg-muted/20">
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">
                   Reason for Visit
                 </p>
-                <p className="text-sm font-medium text-indigo-900">
-                  {visit.reason}
+                <p className="text-xs text-foreground italic">
+                  "{visit.reason}"
                 </p>
               </div>
             )}
           </div>
-          <div className="text-right">
+          <div className="text-right flex flex-col justify-center">
             {patient && (
-              <>
-                <p className="font-semibold text-slate-900">{patient.name}</p>
-                <p className="text-sm text-slate-500">
+              <div className="space-y-0.5">
+                <p className="text-sm text-foreground uppercase tracking-tight">
+                  {patient.name}
+                </p>
+                <p className="text-xs text-muted-foreground uppercase tracking-tight">
                   ID: {patient.patientID}
                 </p>
-                <p className="text-sm text-slate-500">
+                <p className="text-xs text-muted-foreground uppercase tracking-tight">
                   {patient.age} Y / {patient.gender}
                 </p>
-              </>
+              </div>
             )}
           </div>
         </div>
 
         {/* Consultations List */}
-        <h3 className="text-lg font-semibold text-slate-800">Consultations</h3>
+        <h3 className="text-xs uppercase tracking-widest text-muted-foreground ml-1">
+          Consultations
+        </h3>
 
         {visit.consultations && visit.consultations.length > 0 ? (
           <div className="space-y-4">
             {visit.consultations.map((c: any, idx: number) => (
               <div
                 key={idx}
-                className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden"
+                className="bg-card rounded-xl shadow-none border border-border overflow-hidden"
               >
-                <div className="bg-slate-50 px-6 py-3 border-b border-slate-100 flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-sky-700">
+                <div className="bg-secondary px-4 py-1.5 border-b border-border flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-foreground uppercase tracking-tight">
                       Dr. {c.doctorName || c.doctorID}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wide
-                                    ${c.status === "completed" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}
-                                `}
+                      className={cn(
+                        "px-1.5 py-0.5 rounded text-xs uppercase tracking-tighter border bg-background text-foreground border-border",
+                      )}
                     >
                       {c.status}
                     </span>
                   </div>
                   {c.completedAt && (
-                    <span className="text-xs text-slate-500 font-mono">
-                      Completed: {new Date(c.completedAt).toLocaleTimeString()}
+                    <span className="text-[10px] text-muted-foreground font-mono tabular-nums uppercase">
+                      {new Date(c.completedAt).toLocaleTimeString()}
                     </span>
                   )}
                 </div>
-                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Notes */}
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs text-muted-foreground uppercase tracking-widest px-1">
                       Clinical Notes
                     </h4>
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap bg-slate-50 p-3 rounded border border-slate-100 min-h-[80px]">
-                      {c.notes || "No notes."}
+                    <p className="text-xs text-foreground whitespace-pre-wrap bg-muted/20 p-2.5 rounded border border-border min-h-[60px] italic">
+                      {c.notes || "No clinical notes recorded."}
                     </p>
                   </div>
 
                   {/* Prescriptions */}
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs text-muted-foreground uppercase tracking-widest px-1">
                       Prescription
                     </h4>
                     {c.prescriptions && c.prescriptions.length > 0 ? (
-                      <div className="bg-white border rounded-lg overflow-hidden">
-                        <table className="w-full text-sm">
-                          <thead className="bg-slate-50 text-xs text-slate-500">
+                      <div className="bg-background border border-border rounded-lg overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-secondary text-xs text-muted-foreground uppercase tracking-tighter">
                             <tr>
-                              <th className="px-3 py-2 text-left">Medicine</th>
-                              <th className="px-3 py-2 text-left">Dosage</th>
-                              <th className="px-3 py-2 text-left">
+                              <th className="px-2 py-1.5 text-left">
+                                Medicine
+                              </th>
+                              <th className="px-2 py-1.5 text-left border-l border-border/30">
+                                Dosage
+                              </th>
+                              <th className="px-2 py-1.5 text-left border-l border-border/30">
                                 Instructions
                               </th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
+                          <tbody className="divide-y divide-border">
                             {c.prescriptions.map((p: any, pIdx: number) => (
-                              <tr key={pIdx}>
-                                <td className="px-3 py-2 font-medium text-slate-800">
+                              <tr
+                                key={pIdx}
+                                className="hover:bg-muted/30 transition-colors"
+                              >
+                                <td className="px-2 py-1.5 text-foreground">
                                   {p.name}
                                 </td>
-                                <td className="px-3 py-2 text-slate-600">
+                                <td className="px-2 py-1.5 text-muted-foreground border-l border-border/30 tabular-nums">
                                   {p.dosage}
                                 </td>
-                                <td className="px-3 py-2 text-slate-500 italic">
+                                <td className="px-2 py-1.5 text-muted-foreground italic border-l border-border/30">
                                   {p.instruction}
                                 </td>
                               </tr>
@@ -249,9 +262,11 @@ export default function VisitDetailsPage({
                         </table>
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-400 italic">
-                        No medicines prescribed.
-                      </p>
+                      <div className="p-3 border border-dashed border-border rounded-lg flex items-center justify-center bg-muted/5">
+                        <p className="text-xs text-muted-foreground uppercase tracking-widest opacity-40">
+                          No medicines prescribed
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -259,29 +274,59 @@ export default function VisitDetailsPage({
             ))}
           </div>
         ) : (
-          <div className="p-6 bg-white rounded-xl text-center text-slate-500">
-            <div className="mb-4 p-3 bg-amber-50 text-amber-800 text-sm rounded border border-amber-200">
-              <strong>Legacy Visit Data:</strong> This visit was created before
-              the Multi-Doctor update. Detailed consultation records per doctor
-              are not available for this specific visit.
+          <div className="p-4 bg-muted/20 rounded-xl border border-border text-center space-y-4">
+            <div className="p-2.5 bg-background border border-border rounded-lg text-left">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-foreground block"></span>
+                Legacy Visit Record
+              </p>
+              <p className="text-xs leading-relaxed italic text-foreground opacity-70">
+                This record precedes the Multi-Doctor system. Detailed
+                individual consultation logs are unavailable.
+              </p>
             </div>
-            <div className="mt-4 text-left border-t pt-4">
-              <p>
-                <strong>Assigned Doctors:</strong> {visit.doctorIDs?.join(", ")}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-widest px-1">
+                  Assigned Doctors
+                </p>
+                <div className="p-2 border border-border rounded bg-background text-[11px]">
+                  {visit.doctorIDs?.join(", ") || "Unknown/Legacy"}
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-widest px-1">
+                  Notes
+                </p>
+                <div className="p-2 border border-border rounded bg-background text-[11px] italic min-h-[40px]">
+                  {visit.notes || "No notes available."}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1 text-left">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest px-1">
+                Prescriptions
               </p>
-              <p>
-                <strong>Notes:</strong> {visit.notes}
-              </p>
-              <p>
-                <strong>Prescriptions:</strong>
-              </p>
-              <ul className="list-disc pl-5">
-                {visit.prescriptions?.map((p: any, i: number) => (
-                  <li key={i}>
-                    {typeof p === "string" ? p : `${p.name} (${p.dosage})`}
-                  </li>
-                ))}
-              </ul>
+              <div className="border border-border rounded-lg overflow-hidden bg-background">
+                <ul className="divide-y divide-border">
+                  {visit.prescriptions?.map((p: any, i: number) => (
+                    <li
+                      key={i}
+                      className="px-3 py-1.5 text-xs uppercase tracking-tight"
+                    >
+                      {typeof p === "string" ? p : `${p.name} — ${p.dosage}`}
+                    </li>
+                  ))}
+                  {(!visit.prescriptions ||
+                    visit.prescriptions.length === 0) && (
+                    <li className="px-3 py-4 text-xs text-center text-muted-foreground uppercase tracking-widest opacity-30">
+                      No prescription data
+                    </li>
+                  )}
+                </ul>
+              </div>
             </div>
           </div>
         )}

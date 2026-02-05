@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import Visit from "@/models/Visit";
+import Visit, { VisitStatus } from "@/models/Visit";
 
 // GET /api/visits/[id]
 export async function GET(
@@ -10,8 +10,7 @@ export async function GET(
   try {
     await dbConnect();
     const { id } = await params;
-
-    const visit = await Visit.findById(id);
+    const visit = await Visit.findOne({ id });
 
     if (!visit) {
       return NextResponse.json({ message: "Visit not found" }, { status: 404 });
@@ -23,8 +22,8 @@ export async function GET(
   }
 }
 
-// PUT /api/visits/[id]
-export async function PUT(
+// PATCH /api/visits/[id]
+export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
@@ -33,13 +32,77 @@ export async function PUT(
     const { id } = await params;
     const body = await req.json();
 
-    const updatedVisit = await Visit.update(id, body);
+    const visit = await Visit.findOne({ id });
 
-    if (!updatedVisit) {
+    if (!visit) {
       return NextResponse.json({ message: "Visit not found" }, { status: 404 });
     }
 
+    // Update basic fields
+    if (body.patientID) visit.patientID = body.patientID;
+    if (body.visitDate) visit.visitDate = new Date(body.visitDate);
+    if (body.reason !== undefined) visit.reason = body.reason;
+    if (body.status !== undefined) visit.status = body.status;
+
+    // Handle doctor changes
+    if (body.doctorIDs && Array.isArray(body.doctorIDs)) {
+      visit.doctorIDs = body.doctorIDs;
+
+      // Rebuild consultations array based on new doctors
+      const existingConsultations = visit.consultations || [];
+      const newConsultations = body.doctorIDs.map((doctorID: string) => {
+        // Keep existing consultation if doctor was already assigned
+        const existing = existingConsultations.find(
+          (c: any) => c.doctorID === doctorID,
+        );
+        if (existing) {
+          return existing;
+        }
+        // Create new consultation for newly added doctor
+        return {
+          doctorID,
+          doctorName: doctorID,
+          status: VisitStatus.WAITING,
+          prescriptions: [],
+          services: [],
+        };
+      });
+
+      visit.consultations = newConsultations;
+
+      // Update visit status based on consultations
+      const firstWaiting = newConsultations.find(
+        (c: any) => c.status === VisitStatus.WAITING,
+      );
+      const firstInConsultation = newConsultations.find(
+        (c: any) => c.status === VisitStatus.IN_CONSULTATION,
+      );
+
+      if (firstInConsultation) {
+        visit.status = `Consulting with Dr. ${firstInConsultation.doctorID}`;
+      } else if (firstWaiting) {
+        visit.status = `Waiting for Dr. ${firstWaiting.doctorID}`;
+      }
+    }
+
+    const updatedVisit = await Visit.update(id, visit);
     return NextResponse.json(updatedVisit);
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  }
+}
+
+// DELETE /api/visits/[id]
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    await dbConnect();
+    const { id } = await params;
+
+    await Visit.delete(id);
+    return NextResponse.json({ message: "Visit deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }

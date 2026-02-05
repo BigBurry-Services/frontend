@@ -3,10 +3,45 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppLayout } from "@/components/AppLayout";
+import { formatDate } from "@/lib/utils";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DollarSign,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  Download,
+  FileText,
+  CreditCard,
+  Plus,
+  AlertCircle,
+} from "lucide-react";
 
 export default function AccountingDashboard() {
   const { user, logout } = useAuth();
@@ -25,7 +60,14 @@ export default function AccountingDashboard() {
     description: "",
     amount: "",
     category: "General",
+    paymentMode: "Cash",
   });
+  const [splitPayments, setSplitPayments] = useState<
+    { mode: string; amount: string }[]
+  >([{ mode: "Cash", amount: "" }]);
+  const [saleSplitPayments, setSaleSplitPayments] = useState<
+    { mode: string; amount: string }[]
+  >([{ mode: "Cash", amount: "" }]);
   const [saleForm, setSaleForm] = useState({
     customerName: "Walk-in",
     description: "",
@@ -41,12 +83,24 @@ export default function AccountingDashboard() {
     if (type === "sales") {
       csvContent = "Date,Invoice #,Customer,Amount,Payment Mode\n";
       records.forEach((s: any) => {
-        csvContent += `${new Date(s.createdAt).toISOString().split("T")[0]},${s.invoiceNumber},${s.patientName},${s.totalAmount},${s.paymentMode}\n`;
+        let paymentInfo = s.paymentMode || "Cash";
+        if (s.paymentMode === "Split" && s.paymentBreakdown) {
+          paymentInfo = `Split (${s.paymentBreakdown
+            .map((p: any) => `${p.mode}: ${p.amount}`)
+            .join(", ")})`;
+        }
+        csvContent += `${new Date(s.createdAt).toISOString().split("T")[0]},${s.invoiceNumber},${s.patientName},${s.totalAmount},"${paymentInfo}"\n`;
       });
     } else {
-      csvContent = "Date,Description,Category,Amount\n";
+      csvContent = "Date,Description,Category,Payment Mode,Amount\n";
       records.forEach((e: any) => {
-        csvContent += `${e.date},${e.description},${e.category},${e.amount}\n`;
+        let paymentInfo = e.paymentMode || "Cash";
+        if (e.paymentMode === "Split" && e.paymentBreakdown) {
+          paymentInfo = `Split (${e.paymentBreakdown
+            .map((p: any) => `${p.mode}: ${p.amount}`)
+            .join(", ")})`;
+        }
+        csvContent += `${e.date},${e.description},${e.category},"${paymentInfo}",${e.amount}\n`;
       });
     }
 
@@ -87,24 +141,93 @@ export default function AccountingDashboard() {
     fetchData();
   }, [selectedDate, scope]);
 
+  const handleAddSplitPayment = () => {
+    setSplitPayments([...splitPayments, { mode: "UPI", amount: "" }]);
+  };
+
+  const handleRemoveSplitPayment = (index: number) => {
+    setSplitPayments(splitPayments.filter((_, i) => i !== index));
+  };
+
+  const handleSplitChange = (index: number, field: string, value: any) => {
+    const next = [...splitPayments];
+    next[index] = { ...next[index], [field]: value };
+    setSplitPayments(next);
+  };
+
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const amount = Number(expenseForm.amount);
+      if (expenseForm.paymentMode === "Split") {
+        const splitTotal = splitPayments.reduce(
+          (sum, p) => sum + (Number(p.amount) || 0),
+          0,
+        );
+        if (splitTotal !== amount) {
+          alert(
+            `Split total (${splitTotal}) must equal expense amount (${amount})`,
+          );
+          return;
+        }
+      }
+
       await axios.post("/api/accounting", {
         ...expenseForm,
-        amount: Number(expenseForm.amount),
+        amount: amount,
         date: new Date().toISOString().split("T")[0],
+        paymentBreakdown:
+          expenseForm.paymentMode === "Split"
+            ? splitPayments.map((p) => ({
+                mode: p.mode,
+                amount: Number(p.amount),
+              }))
+            : undefined,
       });
-      setExpenseForm({ description: "", amount: "", category: "General" });
+      setExpenseForm({
+        description: "",
+        amount: "",
+        category: "General",
+        paymentMode: "Cash",
+      });
+      setSplitPayments([{ mode: "Cash", amount: "" }]);
       fetchData();
     } catch (error) {
       alert("Failed to add expense");
     }
   };
 
+  const handleAddSaleSplitPayment = () => {
+    setSaleSplitPayments([...saleSplitPayments, { mode: "UPI", amount: "" }]);
+  };
+
+  const handleRemoveSaleSplitPayment = (index: number) => {
+    setSaleSplitPayments(saleSplitPayments.filter((_, i) => i !== index));
+  };
+
+  const handleSaleSplitChange = (index: number, field: string, value: any) => {
+    const next = [...saleSplitPayments];
+    next[index] = { ...next[index], [field]: value };
+    setSaleSplitPayments(next);
+  };
+
   const handleRegisterSale = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const amount = Number(saleForm.amount);
+      if (saleForm.paymentMode === "Split") {
+        const splitTotal = saleSplitPayments.reduce(
+          (sum, p) => sum + (Number(p.amount) || 0),
+          0,
+        );
+        if (splitTotal !== amount) {
+          alert(
+            `Split total (${splitTotal}) must equal sale amount (${amount})`,
+          );
+          return;
+        }
+      }
+
       await axios.post("/api/billing", {
         patientID: "OTC", // Over the counter
         patientName: saleForm.customerName,
@@ -112,9 +235,17 @@ export default function AccountingDashboard() {
         items: [
           {
             description: saleForm.description,
-            amount: Number(saleForm.amount),
+            amount: amount,
           },
         ],
+        totalAmount: amount,
+        paymentBreakdown:
+          saleForm.paymentMode === "Split"
+            ? saleSplitPayments.map((p) => ({
+                mode: p.mode,
+                amount: Number(p.amount),
+              }))
+            : undefined,
       });
       setSaleForm({
         customerName: "Walk-in",
@@ -122,6 +253,7 @@ export default function AccountingDashboard() {
         amount: "",
         paymentMode: "Cash",
       });
+      setSaleSplitPayments([{ mode: "Cash", amount: "" }]);
       fetchData();
     } catch (error) {
       alert("Failed to register sale");
@@ -130,80 +262,63 @@ export default function AccountingDashboard() {
 
   if (user?.role !== "admin") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-background">
-        <p className="text-foreground font-semibold">
-          Access Denied. Admin only.
-        </p>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center space-y-4">
+          <AlertCircle className="h-12 w-12 text-destructive mx-auto" />
+          <h1 className="text-2xl font-bold">Access Denied</h1>
+          <p className="text-muted-foreground">Admin access required.</p>
+        </div>
       </div>
     );
   }
 
   return (
     <AppLayout>
-      <nav className="bg-card border-b border-border px-6 py-4 flex justify-between items-center sticky top-0 z-10 no-print">
-        <div className="flex items-center gap-4">
-          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-            {activeTab === "overview"
-              ? "Financial Overview"
-              : activeTab === "expenses"
-                ? "Expense Ledger"
-                : "Sales History"}
-          </h1>
-        </div>
-        <div className="flex flex-col gap-4">
-          <div className="flex bg-muted p-1 rounded-xl w-fit">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "overview" ? "bg-white dark:bg-slate-800 shadow-sm text-sky-600" : "text-slate-500 hover:text-slate-700"}`}
-            >
-              Overview
-            </button>
-            <button
-              onClick={() => setActiveTab("expenses")}
-              className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "expenses" ? "bg-white dark:bg-slate-800 shadow-sm text-sky-600" : "text-slate-500 hover:text-slate-700"}`}
-            >
-              Expenses
-            </button>
-            <button
-              onClick={() => setActiveTab("sales")}
-              className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === "sales" ? "bg-white dark:bg-slate-800 shadow-sm text-sky-600" : "text-slate-500 hover:text-slate-700"}`}
-            >
-              Sales History
-            </button>
+      <div className="flex flex-col h-full space-y-6 p-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Financial Overview
+            </h1>
+            <p className="text-muted-foreground">
+              Track sales, expenses, and net performance.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 bg-muted p-1 rounded-lg">
+            {["overview", "expenses", "sales"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  activeTab === tab
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
-        <div className="flex gap-3 items-center">
-          {/* ... scope selector ... */}
-          <div className="flex bg-muted rounded-lg p-1 mr-2">
-            <button
-              onClick={() => setScope("all")}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${scope === "all" ? "bg-white dark:bg-slate-800 shadow-sm" : "text-slate-500"}`}
-            >
-              All Time
-            </button>
-            <button
-              onClick={() => setScope("daily")}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${scope === "daily" ? "bg-white dark:bg-slate-800 shadow-sm" : "text-slate-500"}`}
-            >
-              Daily
-            </button>
-            <button
-              onClick={() => setScope("monthly")}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${scope === "monthly" ? "bg-white dark:bg-slate-800 shadow-sm" : "text-slate-500"}`}
-            >
-              Monthly
-            </button>
-            <button
-              onClick={() => setScope("yearly")}
-              className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${scope === "yearly" ? "bg-white dark:bg-slate-800 shadow-sm" : "text-slate-500"}`}
-            >
-              Yearly
-            </button>
-          </div>
+
+        {/* Filters Bar */}
+        <div className="flex flex-wrap gap-4 items-center bg-card p-4 rounded-xl border shadow-sm no-print">
+          <Select value={scope} onValueChange={(val) => setScope(val)}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+
           {scope === "daily" && (
             <Input
               type="date"
-              className="w-40 h-9"
+              className="w-auto"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
             />
@@ -211,399 +326,587 @@ export default function AccountingDashboard() {
           {scope === "monthly" && (
             <Input
               type="month"
-              className="w-40 h-9"
+              className="w-auto"
               value={selectedDate.substring(0, 7)}
               onChange={(e) => setSelectedDate(`${e.target.value}-01`)}
             />
           )}
           {scope === "yearly" && (
-            <select
-              className="w-32 h-9 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20"
+            <Select
               value={selectedDate.substring(0, 4)}
-              onChange={(e) => setSelectedDate(`${e.target.value}-01-01`)}
+              onValueChange={(val) => setSelectedDate(`${val}-01-01`)}
             >
-              {Array.from({ length: 10 }, (_, i) => {
-                const year = new Date().getFullYear() - 5 + i;
-                return (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                );
-              })}
-            </select>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 10 }, (_, i) => {
+                  const year = new Date().getFullYear() - 5 + i;
+                  return (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
           )}
-          <ThemeToggle />
         </div>
-      </nav>
 
-      <main className="p-6 space-y-6">
         {activeTab === "overview" && (
           <div className="space-y-6 animate-in fade-in duration-300">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {scope === "daily" ? "Daily Sales" : "Total Sales"}
-                </h3>
-                <p className="text-3xl font-bold text-green-600 mt-1">
-                  ₹{data.summary.totalSales.toLocaleString()}
-                </p>
-              </div>
-              <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  {scope === "daily" ? "Daily Expenses" : "Total Expenses"}
-                </h3>
-                <p className="text-3xl font-bold text-red-600 mt-1">
-                  ₹{data.summary.totalExpenses.toLocaleString()}
-                </p>
-              </div>
-              <div className="bg-card p-6 rounded-2xl border border-border shadow-sm">
-                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                  Net Balance
-                </h3>
-                <p
-                  className={`text-3xl font-bold mt-1 ${data.summary.netBalance >= 0 ? "text-sky-600" : "text-orange-600"}`}
-                >
-                  ₹{data.summary.netBalance.toLocaleString()}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-card p-8 rounded-2xl border border-border shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-              <div className="w-16 h-16 bg-sky-50 dark:bg-sky-950/30 rounded-full flex items-center justify-center text-sky-600">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Financial Performance</h2>
-                <p className="text-muted-foreground max-w-md mx-auto mt-2">
-                  The current net performance is{" "}
-                  <span
-                    className={
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Sales
+                  </CardTitle>
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">
+                    ₹{data.summary.totalSales.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {scope === "daily" ? "For selected date" : "Total revenue"}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Total Expenses
+                  </CardTitle>
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-red-600">
+                    ₹{data.summary.totalExpenses.toLocaleString()}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {scope === "daily" ? "For selected date" : "Total costs"}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Net Balance
+                  </CardTitle>
+                  <Wallet className="h-4 w-4 text-sky-500" />
+                </CardHeader>
+                <CardContent>
+                  <div
+                    className={`text-2xl font-bold ${
                       data.summary.netBalance >= 0
-                        ? "text-green-600 font-bold"
-                        : "text-red-600 font-bold"
-                    }
+                        ? "text-sky-600"
+                        : "text-orange-600"
+                    }`}
                   >
                     ₹{data.summary.netBalance.toLocaleString()}
-                  </span>
-                  .{" "}
-                  {scope === "all"
-                    ? "Showing all-time results."
-                    : scope === "monthly"
-                      ? `Showing results for ${new Date(selectedDate).toLocaleString("default", { month: "long", year: "numeric" })}.`
-                      : scope === "yearly"
-                        ? `Showing results for ${new Date(selectedDate).getFullYear()}.`
-                        : `Showing results for ${selectedDate}.`}
-                </p>
-              </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Sales - Expenses
+                  </p>
+                </CardContent>
+              </Card>
             </div>
+
+            <Card className="bg-sky-50/50 dark:bg-sky-900/10 border-sky-100 dark:border-sky-800">
+              <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
+                <div className="p-4 bg-background rounded-full shadow-sm">
+                  <DollarSign className="h-8 w-8 text-sky-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Financial Performance</h2>
+                  <p className="text-muted-foreground max-w-md mx-auto mt-2">
+                    Current net performance is{" "}
+                    <span
+                      className={
+                        data.summary.netBalance >= 0
+                          ? "text-green-600 font-bold"
+                          : "text-red-600 font-bold"
+                      }
+                    >
+                      ₹{data.summary.netBalance.toLocaleString()}
+                    </span>
+                    .{" "}
+                    {scope === "all"
+                      ? "Showing all-time results."
+                      : "Based on selected period."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {activeTab === "expenses" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-            {/* Add Expense Form */}
             <div className="lg:col-span-1 no-print">
-              <div className="bg-card p-6 rounded-2xl border border-border shadow-sm sticky top-24">
-                <h2 className="text-lg font-bold mb-4">Add Daily Expense</h2>
-                <form onSubmit={handleAddExpense} className="space-y-4">
-                  <Input
-                    label="Description"
-                    placeholder="e.g. Electricity, Maintenance..."
-                    value={expenseForm.description}
-                    onChange={(e) =>
-                      setExpenseForm({
-                        ...expenseForm,
-                        description: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                  <Input
-                    label="Amount"
-                    type="number"
-                    placeholder="0.00"
-                    value={expenseForm.amount}
-                    onChange={(e) =>
-                      setExpenseForm({
-                        ...expenseForm,
-                        amount: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">
-                      Category
-                    </label>
-                    <select
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20"
-                      value={expenseForm.category}
-                      onChange={(e) =>
-                        setExpenseForm({
-                          ...expenseForm,
-                          category: e.target.value,
-                        })
-                      }
-                    >
-                      <option>General</option>
-                      <option>Utilities</option>
-                      <option>Staff Welfare</option>
-                      <option>Medical Supplies</option>
-                      <option>Maintenance</option>
-                    </select>
-                  </div>
-                  <Button type="submit" className="w-full">
-                    Save Expense
-                  </Button>
-                </form>
-              </div>
+              <Card className="sticky top-24">
+                <CardHeader>
+                  <CardTitle>Add Daily Expense</CardTitle>
+                  <CardDescription>Record a new expense item</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleAddExpense} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Input
+                        id="description"
+                        placeholder=""
+                        value={expenseForm.description}
+                        onChange={(e) =>
+                          setExpenseForm({
+                            ...expenseForm,
+                            description: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="amount">Amount</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        placeholder=""
+                        value={expenseForm.amount}
+                        onChange={(e) =>
+                          setExpenseForm({
+                            ...expenseForm,
+                            amount: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Category</Label>
+                      <Select
+                        value={expenseForm.category}
+                        onValueChange={(val) =>
+                          setExpenseForm({ ...expenseForm, category: val })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="General">General</SelectItem>
+                          <SelectItem value="Utilities">Utilities</SelectItem>
+                          <SelectItem value="Salary">Salary</SelectItem>
+                          <SelectItem value="Rent">Rent</SelectItem>
+                          <SelectItem value="Kitchen">Kitchen</SelectItem>
+                          <SelectItem value="Clinic">Clinic</SelectItem>
+                          <SelectItem value="Medicine">Medicine</SelectItem>
+                          <SelectItem value="Staff Welfare">
+                            Staff Welfare
+                          </SelectItem>
+                          <SelectItem value="Medical Supplies">
+                            Medical Supplies
+                          </SelectItem>
+                          <SelectItem value="Maintenance">
+                            Maintenance
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Mode</Label>
+                      <Select
+                        value={expenseForm.paymentMode}
+                        onValueChange={(val) =>
+                          setExpenseForm({ ...expenseForm, paymentMode: val })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                          <SelectItem value="Card">Card</SelectItem>
+                          <SelectItem value="Bank Transfer">
+                            Bank Transfer
+                          </SelectItem>
+                          <SelectItem value="Split">Split</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {expenseForm.paymentMode === "Split" && (
+                      <div className="space-y-3 p-3 bg-muted rounded-md">
+                        <Label>Split Breakdown</Label>
+                        {splitPayments.map((p, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <Select
+                              value={p.mode}
+                              onValueChange={(val) =>
+                                handleSplitChange(idx, "mode", val)
+                              }
+                            >
+                              <SelectTrigger className="w-[100px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Cash">Cash</SelectItem>
+                                <SelectItem value="UPI">UPI</SelectItem>
+                                <SelectItem value="Card">Card</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              placeholder="Amount"
+                              className="flex-1"
+                              value={p.amount}
+                              onChange={(e) =>
+                                handleSplitChange(idx, "amount", e.target.value)
+                              }
+                            />
+                            {idx > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveSplitPayment(idx)}
+                              >
+                                ✕
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={handleAddSplitPayment}
+                        >
+                          + Add Split
+                        </Button>
+                        <div className="text-xs text-right text-muted-foreground">
+                          Total:{" "}
+                          {splitPayments.reduce(
+                            (acc, curr) => acc + (Number(curr.amount) || 0),
+                            0,
+                          )}{" "}
+                          / {expenseForm.amount}
+                        </div>
+                      </div>
+                    )}
+                    <Button type="submit" className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Save Expense
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Expense Ledger Table */}
             <div className="lg:col-span-2">
-              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden ledger-container">
-                <div className="px-6 py-4 border-b border-border bg-muted/30 flex justify-between items-center">
-                  <h2 className="font-bold">Expense Ledger</h2>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-red-50 dark:bg-red-950/20 px-3 py-1 rounded-lg border border-red-100 dark:border-red-900/30">
-                      <span className="text-xs font-semibold text-red-600 uppercase">
-                        Total:{" "}
-                      </span>
-                      <span className="text-sm font-bold text-red-700 dark:text-red-400">
-                        ₹{data.summary.totalExpenses.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex gap-1 no-print">
-                      <Button
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={() => exportToCSV("expenses")}
-                      >
-                        CSV
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={exportToPDF}
-                      >
-                        PDF
-                      </Button>
-                    </div>
+              <Card className="h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 md:pb-2">
+                  <div>
+                    <CardTitle>Expense Ledger</CardTitle>
+                    <CardDescription>
+                      Total: ₹{data.summary.totalExpenses.toLocaleString()}
+                    </CardDescription>
                   </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
-                      <tr>
-                        <th className="px-6 py-3">Date</th>
-                        <th className="px-6 py-3">Description</th>
-                        <th className="px-6 py-3">Category</th>
-                        <th className="px-6 py-3 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
+                  <div className="flex gap-2 no-print">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => exportToCSV("expenses")}
+                    >
+                      <Download className="h-4 w-4 mr-2" /> CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportToPDF}>
+                      <FileText className="h-4 w-4 mr-2" /> PDF
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Payment Mode</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {data.expenses.map((exp: any) => (
-                        <tr
-                          key={exp.id}
-                          className="hover:bg-muted/30 transition-colors"
-                        >
-                          <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
-                            {exp.date}
-                          </td>
-                          <td className="px-6 py-4 font-medium">
-                            {exp.description}
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] uppercase font-bold text-slate-600 dark:text-slate-400">
+                        <TableRow key={exp.id}>
+                          <TableCell className="font-mono text-xs">
+                            {formatDate(exp.date)}
+                          </TableCell>
+                          <TableCell>{exp.description}</TableCell>
+                          <TableCell>
+                            <span className="px-2 py-1 rounded-full bg-muted text-[10px] uppercase font-bold">
                               {exp.category}
                             </span>
-                          </td>
-                          <td className="px-6 py-4 text-right font-bold text-red-500">
+                          </TableCell>
+                          <TableCell>
+                            {exp.paymentMode === "Split" &&
+                            exp.paymentBreakdown ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-medium text-xs">
+                                  Split
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {exp.paymentBreakdown
+                                    .map((p: any) => `${p.mode}: ${p.amount}`)
+                                    .join(", ")}
+                                </span>
+                              </div>
+                            ) : (
+                              exp.paymentMode || "Cash"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-red-600">
                             ₹{exp.amount.toLocaleString()}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
                       {data.expenses.length === 0 && (
-                        <tr>
-                          <td
+                        <TableRow>
+                          <TableCell
                             colSpan={4}
-                            className="px-6 py-10 text-center text-muted-foreground italic"
+                            className="text-center py-8 text-muted-foreground"
                           >
                             No expenses found.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </div>
           </div>
         )}
 
         {activeTab === "sales" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
-            {/* Register Manual Sale Form */}
             <div className="lg:col-span-1 no-print">
-              <div className="bg-card p-6 rounded-2xl border border-border shadow-sm sticky top-24">
-                <h2 className="text-lg font-bold mb-4">Register Manual Sale</h2>
-                <form onSubmit={handleRegisterSale} className="space-y-4">
-                  <Input
-                    label="Customer Name"
-                    placeholder="Walk-in"
-                    value={saleForm.customerName}
-                    onChange={(e) =>
-                      setSaleForm({
-                        ...saleForm,
-                        customerName: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                  <Input
-                    label="Description"
-                    placeholder="e.g. Pharmacy Sale, Consultation..."
-                    value={saleForm.description}
-                    onChange={(e) =>
-                      setSaleForm({
-                        ...saleForm,
-                        description: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                  <Input
-                    label="Amount"
-                    type="number"
-                    placeholder="0.00"
-                    value={saleForm.amount}
-                    onChange={(e) =>
-                      setSaleForm({ ...saleForm, amount: e.target.value })
-                    }
-                    required
-                  />
-                  <div className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase">
-                      Payment Mode
-                    </label>
-                    <select
-                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-primary/20"
-                      value={saleForm.paymentMode}
-                      onChange={(e) =>
-                        setSaleForm({
-                          ...saleForm,
-                          paymentMode: e.target.value,
-                        })
-                      }
-                    >
-                      <option>Cash</option>
-                      <option>UPI</option>
-                      <option>Card</option>
-                      <option>Bank Transfer</option>
-                    </select>
-                  </div>
-                  <Button type="submit" className="w-full">
-                    Register Sale
-                  </Button>
-                </form>
-              </div>
+              <Card className="sticky top-24">
+                <CardHeader>
+                  <CardTitle>Register Manual Sale</CardTitle>
+                  <CardDescription>For walk-in or OTC sales</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleRegisterSale} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="customerName">Customer Name</Label>
+                      <Input
+                        id="customerName"
+                        placeholder=""
+                        value={saleForm.customerName}
+                        onChange={(e) =>
+                          setSaleForm({
+                            ...saleForm,
+                            customerName: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="saleDescription">Description</Label>
+                      <Input
+                        id="saleDescription"
+                        placeholder=""
+                        value={saleForm.description}
+                        onChange={(e) =>
+                          setSaleForm({
+                            ...saleForm,
+                            description: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="saleAmount">Amount</Label>
+                      <Input
+                        id="saleAmount"
+                        type="number"
+                        placeholder=""
+                        value={saleForm.amount}
+                        onChange={(e) =>
+                          setSaleForm({ ...saleForm, amount: e.target.value })
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Payment Mode</Label>
+                      <Select
+                        value={saleForm.paymentMode}
+                        onValueChange={(val) =>
+                          setSaleForm({ ...saleForm, paymentMode: val })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                          <SelectItem value="Card">Card</SelectItem>
+                          <SelectItem value="Bank Transfer">
+                            Bank Transfer
+                          </SelectItem>
+                          <SelectItem value="Split">Split</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {saleForm.paymentMode === "Split" && (
+                      <div className="space-y-3 p-3 bg-muted rounded-md">
+                        <Label>Split Breakdown</Label>
+                        {saleSplitPayments.map((p, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <Select
+                              value={p.mode}
+                              onValueChange={(val) =>
+                                handleSaleSplitChange(idx, "mode", val)
+                              }
+                            >
+                              <SelectTrigger className="w-[100px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Cash">Cash</SelectItem>
+                                <SelectItem value="UPI">UPI</SelectItem>
+                                <SelectItem value="Card">Card</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              type="number"
+                              placeholder="Amount"
+                              className="flex-1"
+                              value={p.amount}
+                              onChange={(e) =>
+                                handleSaleSplitChange(
+                                  idx,
+                                  "amount",
+                                  e.target.value,
+                                )
+                              }
+                            />
+                            {idx > 0 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  handleRemoveSaleSplitPayment(idx)
+                                }
+                              >
+                                ✕
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={handleAddSaleSplitPayment}
+                        >
+                          + Add Split
+                        </Button>
+                        <div className="text-xs text-right text-muted-foreground">
+                          Total:{" "}
+                          {saleSplitPayments.reduce(
+                            (acc, curr) => acc + (Number(curr.amount) || 0),
+                            0,
+                          )}{" "}
+                          / {saleForm.amount}
+                        </div>
+                      </div>
+                    )}
+
+                    <Button type="submit" className="w-full">
+                      <CreditCard className="h-4 w-4 mr-2" />
+                      Register Sale
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Sales History Table */}
             <div className="lg:col-span-2">
-              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden ledger-container">
-                <div className="px-6 py-4 border-b border-border bg-muted/30 flex justify-between items-center">
-                  <h2 className="font-bold">Sales History</h2>
-                  <div className="flex items-center gap-3">
-                    <div className="bg-green-50 dark:bg-green-950/20 px-3 py-1 rounded-lg border border-green-100 dark:border-green-900/30">
-                      <span className="text-xs font-semibold text-green-600 uppercase">
-                        Total:{" "}
-                      </span>
-                      <span className="text-sm font-bold text-green-700 dark:text-green-400">
-                        ₹{data.summary.totalSales.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex gap-1 no-print">
-                      <Button
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={() => exportToCSV("sales")}
-                      >
-                        CSV
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="h-8 px-3 text-xs"
-                        onClick={exportToPDF}
-                      >
-                        PDF
-                      </Button>
-                    </div>
+              <Card className="h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 md:pb-2">
+                  <div>
+                    <CardTitle>Sales History</CardTitle>
+                    <CardDescription>
+                      Total: ₹{data.summary.totalSales.toLocaleString()}
+                    </CardDescription>
                   </div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
-                      <tr>
-                        <th className="px-6 py-3">Date</th>
-                        <th className="px-6 py-3">Invoice #</th>
-                        <th className="px-6 py-3">Patient/Customer</th>
-                        <th className="px-6 py-3 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
+                  <div className="flex gap-2 no-print">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => exportToCSV("sales")}
+                    >
+                      <Download className="h-4 w-4 mr-2" /> CSV
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={exportToPDF}>
+                      <FileText className="h-4 w-4 mr-2" /> PDF
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Invoice #</TableHead>
+                        <TableHead>Customer</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {data.sales.map((sale: any) => (
-                        <tr
-                          key={sale.id}
-                          className="hover:bg-muted/30 transition-colors"
-                        >
-                          <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
-                            {
-                              new Date(sale.createdAt)
-                                .toISOString()
-                                .split("T")[0]
-                            }
-                          </td>
-                          <td className="px-6 py-4 font-mono text-sky-600">
+                        <TableRow key={sale.id}>
+                          <TableCell className="font-mono text-xs">
+                            {formatDate(sale.createdAt)}
+                          </TableCell>
+                          <TableCell className="font-mono text-sky-600">
                             {sale.invoiceNumber}
-                          </td>
-                          <td className="px-6 py-4">{sale.patientName}</td>
-                          <td className="px-6 py-4 text-right font-bold text-green-600">
+                          </TableCell>
+                          <TableCell>{sale.patientName}</TableCell>
+                          <TableCell className="text-right font-medium text-green-600">
                             ₹{sale.totalAmount.toLocaleString()}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
                       {data.sales.length === 0 && (
-                        <tr>
-                          <td
+                        <TableRow>
+                          <TableCell
                             colSpan={4}
-                            className="px-6 py-10 text-center text-muted-foreground italic"
+                            className="text-center py-8 text-muted-foreground"
                           >
                             No sales records found.
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             </div>
           </div>
         )}
-      </main>
+      </div>
     </AppLayout>
   );
 }

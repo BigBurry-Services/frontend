@@ -6,7 +6,6 @@ import {
   FaWallet,
   FaHistory,
   FaHospitalUser,
-  FaUserMd,
   FaPills,
   FaCalculator,
   FaSignOutAlt,
@@ -15,31 +14,46 @@ import {
   FaUsers,
   FaMicroscope,
   FaHospital,
-  FaTimes,
+  FaStethoscope,
+  FaArchive,
+  FaBriefcaseMedical,
+  FaFileInvoice,
 } from "react-icons/fa";
-import { cn } from "@/lib/utils";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User2, ChevronUp } from "lucide-react";
 
-interface SidebarProps {
-  activeTab?: string;
-  setActiveTab?: (tab: string) => void;
+interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user?: any;
   logout?: () => void;
-  isAccounting?: boolean;
   extraContent?: React.ReactNode;
-  isOpen?: boolean;
-  onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({
-  activeTab,
-  setActiveTab,
+export function AppSidebar({
   user,
   logout,
   extraContent,
-  isOpen,
-  onClose,
-}) => {
+  ...props
+}: AppSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -68,9 +82,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       roles: ["admin", "receptionist"],
     },
     {
-      name: "Bed Status",
-      icon: FaBed,
-      path: "/reception?tab=beds",
+      name: "Billing",
+      icon: FaWallet,
+      path: "/reception/billing",
       roles: ["admin", "receptionist"],
     },
     {
@@ -84,6 +98,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: FaCalculator,
       path: "/accounting",
       roles: ["admin"],
+    },
+    {
+      name: "Reports",
+      icon: FaFileInvoice,
+      path: "/reports",
+      roles: ["admin", "receptionist"],
     },
   ];
 
@@ -107,6 +127,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       roles: ["admin"],
     },
     {
+      name: "Manage Treatments",
+      icon: FaStethoscope,
+      path: "/reception/treatments",
+      roles: ["admin"],
+    },
+    {
+      name: "Manage Packages",
+      icon: FaBriefcaseMedical,
+      path: "/reception/packages",
+      roles: ["admin"],
+    },
+    {
       name: "Manage Departments",
       icon: FaHospital,
       path: "/reception/departments",
@@ -114,166 +146,142 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
   ];
 
-  const accountingTabs = [
-    { id: "overview", name: "Overview", icon: FaChartPie },
-    { id: "expenses", name: "Expenses", icon: FaWallet },
-    { id: "sales", name: "Sales History", icon: FaHistory },
-  ];
-
-  const receptionTabs = [
-    { id: "registration", name: "Overview", icon: FaChartPie },
-    { id: "patients", name: "Patients List", icon: FaHospitalUser },
-    { id: "beds", name: "Bed Status", icon: FaBed },
-  ];
-
-  const currentModule = mainModules.find((m) => pathname.startsWith(m.path));
-  const isAccounting = pathname.startsWith("/accounting");
-  const isReception =
-    pathname.startsWith("/reception") &&
-    !pathname.includes("/billing") &&
-    !pathname.includes("/staff") &&
-    !pathname.includes("/resources") &&
-    !pathname.includes("/departments") &&
-    !pathname.includes("/services");
-  const isDoctor = pathname.startsWith("/doctor");
-  const isPharmacy = pathname.startsWith("/pharmacy");
-
   return (
-    <>
-      {/* Backdrop for mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
-          onClick={onClose}
-        />
-      )}
-
-      <aside
-        className={cn(
-          "w-64 h-screen bg-[#0f172a] text-slate-300 flex flex-col no-print border-r border-slate-800 z-50 transition-transform duration-300",
-          "fixed top-0 left-0 lg:sticky",
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
-        )}
-      >
-        <div className="p-6 flex items-center justify-between border-b border-slate-800/50">
-          <div className="flex items-center gap-3">
-            <img
-              src="/phoenix_logo.svg"
-              alt="Logo"
-              className="w-10 h-10 object-contain bg-white rounded-md p-1"
-            />
-            <span className="text-xl font-bold text-white tracking-tight">
-              Phoenix HMS
-            </span>
-          </div>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="lg:hidden p-2 text-slate-400 hover:text-white"
+    <Sidebar collapsible="icon" className="no-print" {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              asChild
+              className="h-20 py-2 hover:bg-transparent"
             >
-              <FaTimes size={20} />
-            </button>
-          )}
-        </div>
+              <div className="flex w-full items-center justify-center">
+                <img
+                  src="/phoenix_logo.svg"
+                  alt="Logo"
+                  className="h-full w-auto max-w-full object-contain px-2"
+                />
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          {/* Main Modules Section */}
-          <div className="px-6 mb-6">
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4">
-              Main Modules
-            </h3>
-            <div className="space-y-1">
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Main Modules</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
               {mainModules
                 .filter((m) => !user || m.roles.includes(user.role))
                 .map((module) => (
-                  <button
-                    key={module.path}
-                    onClick={() => router.push(module.path)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                      isActive(module.path)
-                        ? "bg-sky-500/10 text-sky-400"
-                        : "hover:bg-slate-800/50 hover:text-white",
-                    )}
-                  >
-                    <module.icon
-                      className={cn(
-                        "text-lg",
-                        isActive(module.path)
-                          ? "text-sky-400"
-                          : "text-slate-500",
-                      )}
-                    />
-                    {module.name}
-                  </button>
+                  <SidebarMenuItem key={module.path}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(module.path)}
+                      tooltip={module.name}
+                      onClick={() => router.push(module.path)}
+                    >
+                      <button>
+                        <module.icon className="h-4 w-4" />
+                        <span>{module.name}</span>
+                      </button>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 ))}
-            </div>
-          </div>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-          {/* Administration Section */}
-          {user?.role === "admin" && (
-            <div className="px-6 mb-6">
-              <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-4 border-t border-slate-800/50 pt-6">
-                Manage Resources
-              </h3>
-              <div className="space-y-1">
+        {user?.role === "admin" && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
                 {adminModules.map((module) => (
-                  <button
-                    key={module.path}
-                    onClick={() => router.push(module.path)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all text-left",
-                      isActive(module.path)
-                        ? "bg-sky-500/10 text-sky-400"
-                        : "hover:bg-slate-800/50 hover:text-white",
-                    )}
-                  >
-                    <module.icon
-                      className={cn(
-                        "text-lg",
-                        isActive(module.path)
-                          ? "text-sky-400"
-                          : "text-slate-500",
-                      )}
-                    />
-                    {module.name}
-                  </button>
+                  <SidebarMenuItem key={module.path}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(module.path)}
+                      tooltip={module.name}
+                      onClick={() => router.push(module.path)}
+                    >
+                      <button>
+                        <module.icon className="h-4 w-4" />
+                        <span>{module.name}</span>
+                      </button>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 ))}
-              </div>
-            </div>
-          )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
-          {/* Custom Content (e.g., Doctor Queue) */}
-          {extraContent && (
-            <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0 border-t border-slate-800/50 bg-slate-900/20">
-              {extraContent}
-            </div>
-          )}
-        </div>
+        <SidebarGroup>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <ThemeToggle />
+                  <span className="text-sm font-medium">Toggle Theme</span>
+                </div>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-        <div className="p-4 border-t border-slate-800/50 bg-slate-900/50">
-          <div className="flex items-center gap-3 px-3 py-2 mb-2">
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white uppercase">
-              {user?.username?.substring(0, 2) || "U"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {user?.username || "Small HMS User"}
-              </p>
-              <p className="text-xs text-slate-500 truncate capitalize">
-                {user?.role || "Admin"}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-red-400 hover:bg-red-400/10 transition-all"
-          >
-            <FaSignOutAlt />
-            Logout
-          </button>
-        </div>
-      </aside>
-    </>
+        {/* Extra Content Area (Doctor Queue etc) */}
+        {extraContent && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Active Tasks</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <div className="px-2">{extraContent}</div>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground uppercase">
+                    {user?.username?.substring(0, 2) || "U"}
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate">{user?.username || "Use"}</span>
+                    <span className="truncate text-xs capitalize">
+                      {user?.role || "User"}
+                    </span>
+                  </div>
+                  <ChevronUp className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                side="top"
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+              >
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="text-red-500 cursor-pointer"
+                >
+                  <FaSignOutAlt className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
-};
+}

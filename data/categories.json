@@ -1,14 +1,20 @@
 [
   {
-    "name": "ayurvedha",
-    "id": "1769868373890lhomg",
-    "createdAt": "2026-01-31T14:06:13.891Z",
-    "updatedAt": "2026-01-31T14:06:13.891Z"
+    "id": "cat-1",
+    "name": "Tablets",
+    "createdAt": "2026-02-03T08:00:00.000Z",
+    "updatedAt": "2026-02-03T08:00:00.000Z"
   },
   {
-    "name": "yoga",
-    "id": "1769869085793cuk4l",
-    "createdAt": "2026-01-31T14:18:05.793Z",
-    "updatedAt": "2026-01-31T14:18:05.793Z"
+    "id": "cat-2",
+    "name": "Syrups",
+    "createdAt": "2026-02-03T08:00:00.000Z",
+    "updatedAt": "2026-02-03T08:00:00.000Z"
+  },
+  {
+    "name": "Ayurvedha",
+    "id": "1770281237734szp6j",
+    "createdAt": "2026-02-05T08:47:17.734Z",
+    "updatedAt": "2026-02-05T08:47:17.734Z"
   }
 ]

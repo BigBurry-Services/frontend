@@ -66,7 +66,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      if (user?.username) {
+        await axios.post("/api/auth/logout", { username: user.username });
+      }
+    } catch (error) {
+      console.error("Logout log failed", error);
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
@@ -74,9 +81,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     router.push("/login");
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-full border-t-2 border-b-2 border-sky-600 animate-spin"></div>
+          <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-t-2 border-b-2 border-sky-600/20"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

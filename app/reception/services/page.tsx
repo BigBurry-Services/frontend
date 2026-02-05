@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,7 @@ import { AppLayout } from "@/components/AppLayout";
 export default function ServicesPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [services, setServices] = useState([]);
+  const [services, setServices] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -87,33 +88,39 @@ export default function ServicesPage() {
             Add New Service
           </h2>
           <form onSubmit={handleCreate} className="space-y-4">
-            <Input
-              label="Service Name"
-              value={formData.name}
-              onChange={(e: any) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              required
-              placeholder="e.g. X-Ray, Blood Test"
-            />
-            <Input
-              label="Price (Rs.)"
-              type="number"
-              value={formData.price}
-              onChange={(e: any) =>
-                setFormData({ ...formData, price: e.target.value })
-              }
-              required
-              placeholder="500"
-            />
-            <Input
-              label="Description (Optional)"
-              value={formData.description}
-              onChange={(e: any) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="Brief description..."
-            />
+            <div className="space-y-1">
+              <Label>Service Name</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                required
+                placeholder=""
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Price (Rs.)</Label>
+              <Input
+                type="number"
+                value={formData.price}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: e.target.value })
+                }
+                required
+                placeholder=""
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Description (Optional)</Label>
+              <Input
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder=""
+              />
+            </div>
             <Button type="submit" className="w-full mt-2" disabled={loading}>
               {loading ? "Creating..." : "Create Service"}
             </Button>

@@ -1,12 +1,82 @@
 [
   {
-    "name": "paracetamol",
-    "categoryID": "1769868373890lhomg",
+    "id": "inv-1",
+    "name": "Paracetamol 500mg",
+    "categoryID": "cat-1",
+    "unitPrice": 5,
+    "batches": [
+      {
+        "batchNumber": "B001",
+        "quantity": 92,
+        "expiryDate": "2026-02-19T00:00:00.000Z",
+        "addedDate": "2026-02-04T06:10:55.390Z"
+      }
+    ],
+    "createdAt": "2026-02-03T08:00:00.000Z",
+    "updatedAt": "2026-02-05T11:27:59.190Z"
+  },
+  {
+    "id": "inv-2",
+    "name": "Amoxicillin 250mg",
+    "categoryID": "cat-1",
+    "unitPrice": 10,
+    "batches": [
+      {
+        "batchNumber": "B002",
+        "quantity": 50,
+        "expiryDate": "2025-10-31T00:00:00.000Z",
+        "addedDate": "2026-02-03T08:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-02-03T08:00:00.000Z",
+    "updatedAt": "2026-02-03T08:00:00.000Z"
+  },
+  {
+    "id": "inv-3",
+    "name": "Cough Syrup 100ml",
+    "categoryID": "cat-2",
+    "unitPrice": 85,
+    "batches": [
+      {
+        "batchNumber": "B003",
+        "quantity": 30,
+        "expiryDate": "2026-06-30T00:00:00.000Z",
+        "addedDate": "2026-02-03T08:00:00.000Z"
+      }
+    ],
+    "createdAt": "2026-02-03T08:00:00.000Z",
+    "updatedAt": "2026-02-03T08:00:00.000Z"
+  },
+  {
+    "id": "inv-4",
+    "name": "Vitamin C",
+    "categoryID": "cat-1",
+    "unitPrice": 3,
+    "batches": [
+      {
+        "batchNumber": "B004",
+        "quantity": 199,
+        "expiryDate": "2026-03-28T00:00:00.000Z",
+        "addedDate": "2026-02-04T06:16:12.410Z"
+      }
+    ],
+    "createdAt": "2026-02-03T08:00:00.000Z",
+    "updatedAt": "2026-02-04T06:16:20.617Z"
+  },
+  {
+    "name": "med1",
+    "categoryID": "1770281237734szp6j",
     "unitPrice": 200,
-    "batchNumber": "200",
-    "expiryDate": "2026-02-04",
-    "id": "17698691064218hh04",
-    "createdAt": "2026-01-31T14:18:26.421Z",
-    "updatedAt": "2026-01-31T14:18:37.851Z"
+    "batches": [
+      {
+        "batchNumber": "1",
+        "quantity": 5,
+        "expiryDate": "2026-02-19T00:00:00.000Z",
+        "addedDate": "2026-02-05T08:47:57.780Z"
+      }
+    ],
+    "id": "1770281252418zrory",
+    "createdAt": "2026-02-05T08:47:32.418Z",
+    "updatedAt": "2026-02-05T08:47:57.807Z"
   }
 ]

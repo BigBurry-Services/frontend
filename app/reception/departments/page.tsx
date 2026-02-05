@@ -3,6 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/label";
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,7 @@ import { AppLayout } from "@/components/AppLayout";
 export default function DepartmentsPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const [departments, setDepartments] = useState([]);
+  const [departments, setDepartments] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -52,8 +53,8 @@ export default function DepartmentsPage() {
     try {
       await axios.delete(`${apiUrl}/departments/${id}`);
       fetchDepartments();
-    } catch (error) {
-      alert("Failed to delete department");
+    } catch (error: any) {
+      alert(error.response?.data?.message || "Failed to delete department");
     }
   };
 
@@ -83,23 +84,27 @@ export default function DepartmentsPage() {
             Add New Department
           </h2>
           <form onSubmit={handleCreate} className="space-y-4">
-            <Input
-              label="Department Name"
-              value={formData.name}
-              onChange={(e) =>
-                setFormData({ ...formData, name: e.target.value })
-              }
-              required
-              placeholder="e.g. Cardiology"
-            />
-            <Input
-              label="Description (Optional)"
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="Brief description..."
-            />
+            <div className="space-y-1">
+              <Label>Department Name</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                required
+                placeholder=""
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Description (Optional)</Label>
+              <Input
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder=""
+              />
+            </div>
             <Button type="submit" className="w-full mt-2" disabled={loading}>
               {loading ? "Creating..." : "Create Department"}
             </Button>

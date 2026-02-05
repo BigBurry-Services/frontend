@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { Label } from "@/components/ui/label";
 import axios from "axios";
 
 export default function LoginPage() {
@@ -45,46 +46,70 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg border border-slate-100">
-        <div className="text-center mb-8">
-          <img
-            src="/phoenix_logo.svg"
-            alt="Phoenix International HMS"
-            className="h-24 mx-auto mb-6"
-          />
-          <h1 className="text-2xl font-bold text-slate-900">
-            Phoenix International HMS
-          </h1>
-          <p className="text-slate-600">Sign in to your account</p>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 relative overflow-hidden">
+      {/* Background Ornaments */}
+      <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_top_right,rgba(15,118,110,0.05),transparent_50%),radial-gradient(circle_at_bottom_left,rgba(15,118,110,0.03),transparent_50%)] pointer-events-none" />
+
+      <div className="w-full max-w-[400px] p-8 md:p-10 bg-white dark:bg-slate-950 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-border relative z-10 mx-4">
+        <div className="text-center mb-10">
+          <div className="inline-block p-4 bg-white dark:bg-white rounded-2xl shadow-sm mb-6 border border-border">
+            <img
+              src="/phoenix_logo.svg"
+              alt="Phoenix International"
+              className="h-16 w-auto"
+            />
+          </div>
+          <p className="text-sm font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500">
+            Sign in to your account
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter your username"
-            required
-          />
-          <Input
-            label="Password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-            required
-          />
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                Username
+              </Label>
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder=""
+                required
+                className="h-12 bg-slate-50/50 border-border focus:bg-white transition-all rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 ml-1">
+                Password
+              </Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder=""
+                required
+                className="h-12 bg-slate-50/50 border-border focus:bg-white transition-all rounded-xl"
+              />
+            </div>
+          </div>
 
           {error && (
-            <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+            <div className="p-3 text-xs font-bold uppercase tracking-tight text-red-500 bg-red-50/50 border border-red-100 rounded-lg animate-in fade-in slide-in-from-top-1">
               {error}
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In"}
+          <Button
+            type="submit"
+            className="w-full h-12 text-sm uppercase font-black tracking-widest transition-transform active:scale-[0.98]"
+            disabled={loading}
+          >
+            {loading ? "Verifying..." : "Sign In"}
           </Button>
+
+          <p className="text-center text-[10px] text-slate-400 uppercase tracking-tighter">
+            Hospital Management System • v1.0
+          </p>
         </form>
       </div>
     </div>

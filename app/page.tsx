@@ -24,7 +24,10 @@ export default function Home() {
 
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+      <div className="relative">
+        <div className="h-16 w-16 rounded-full border-t-2 border-b-2 border-sky-600 animate-spin"></div>
+        <div className="absolute top-0 left-0 h-16 w-16 rounded-full border-t-2 border-b-2 border-sky-600/20"></div>
+      </div>
     </div>
   );
 }

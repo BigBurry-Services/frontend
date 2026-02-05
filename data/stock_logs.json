@@ -1,0 +1,13 @@
+[
+  {
+    "itemId": "inv-1",
+    "itemName": "Paracetamol 500mg",
+    "change": 3,
+    "type": "OUT",
+    "reason": "Stock Removed (Update)",
+    "timestamp": "2026-02-05T11:27:59.182Z",
+    "id": "1770290879184eystn",
+    "createdAt": "2026-02-05T11:27:59.184Z",
+    "updatedAt": "2026-02-05T11:27:59.184Z"
+  }
+]

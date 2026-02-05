@@ -1,0 +1,92 @@
+[
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGOUT",
+    "timestamp": "2026-02-05T11:15:05.549Z",
+    "id": "1770290105550yt0t7",
+    "createdAt": "2026-02-05T11:15:05.550Z",
+    "updatedAt": "2026-02-05T11:15:05.550Z"
+  },
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGIN",
+    "timestamp": "2026-02-05T11:15:13.813Z",
+    "id": "17702901138158zzl1",
+    "createdAt": "2026-02-05T11:15:13.815Z",
+    "updatedAt": "2026-02-05T11:15:13.815Z"
+  },
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGIN",
+    "timestamp": "2026-02-05T11:15:13.941Z",
+    "id": "177029011394447eus",
+    "createdAt": "2026-02-05T11:15:13.944Z",
+    "updatedAt": "2026-02-05T11:15:13.944Z"
+  },
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGOUT",
+    "timestamp": "2026-02-05T11:23:30.538Z",
+    "id": "1770290610540atw65",
+    "createdAt": "2026-02-05T11:23:30.540Z",
+    "updatedAt": "2026-02-05T11:23:30.540Z"
+  },
+  {
+    "userId": "doc-2",
+    "username": "doc_ortho",
+    "action": "LOGIN",
+    "timestamp": "2026-02-05T11:23:40.427Z",
+    "id": "17702906204311ezeo",
+    "createdAt": "2026-02-05T11:23:40.431Z",
+    "updatedAt": "2026-02-05T11:23:40.431Z"
+  },
+  {
+    "userId": "doc-2",
+    "username": "doc_ortho",
+    "action": "LOGOUT",
+    "timestamp": "2026-02-05T11:24:28.462Z",
+    "id": "1770290668465o5fg5",
+    "createdAt": "2026-02-05T11:24:28.465Z",
+    "updatedAt": "2026-02-05T11:24:28.465Z"
+  },
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGIN",
+    "timestamp": "2026-02-05T11:24:36.863Z",
+    "id": "1770290676867wc3w8",
+    "createdAt": "2026-02-05T11:24:36.867Z",
+    "updatedAt": "2026-02-05T11:24:36.867Z"
+  },
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGIN",
+    "timestamp": "2026-02-05T11:24:40.492Z",
+    "id": "1770290680495dpwil",
+    "createdAt": "2026-02-05T11:24:40.495Z",
+    "updatedAt": "2026-02-05T11:24:40.495Z"
+  },
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGIN",
+    "timestamp": "2026-02-05T11:24:41.918Z",
+    "id": "17702906819205iu2r",
+    "createdAt": "2026-02-05T11:24:41.920Z",
+    "updatedAt": "2026-02-05T11:24:41.920Z"
+  },
+  {
+    "userId": "admin-1",
+    "username": "admin",
+    "action": "LOGIN",
+    "timestamp": "2026-02-05T11:24:42.028Z",
+    "id": "1770290682031plrgy",
+    "createdAt": "2026-02-05T11:24:42.031Z",
+    "updatedAt": "2026-02-05T11:24:42.031Z"
+  }
+]

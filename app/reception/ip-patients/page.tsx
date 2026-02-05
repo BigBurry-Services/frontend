@@ -6,12 +6,16 @@ import axios from "axios";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/utils";
 
 export default function IpPatientsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [ipPatients, setIpPatients] = useState<any[]>([]);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedIp, setSelectedIp] = useState<any>(null);
+  const [editDischargeDate, setEditDischargeDate] = useState("");
 
   const apiUrl = "/api";
 
@@ -59,6 +63,29 @@ export default function IpPatientsPage() {
 
     fetchData();
   }, []);
+
+  const handleEditClick = (e: React.MouseEvent, p: any) => {
+    e.stopPropagation();
+    setSelectedIp(p);
+    setEditDischargeDate(p.expectedDischargeDate || "");
+    setShowEditModal(true);
+  };
+
+  const handleUpdateDischarge = async () => {
+    try {
+      await axios.patch(`${apiUrl}/resources/${selectedIp.bedId}/status`, {
+        isOccupied: true,
+        patientID: selectedIp.patientID,
+        admissionDate: selectedIp.admissionDate,
+        expectedDischargeDate: editDischargeDate,
+      });
+      setShowEditModal(false);
+      // Refresh list
+      window.location.reload();
+    } catch (error) {
+      alert("Failed to update discharge date");
+    }
+  };
 
   if (!user || (user.role !== "admin" && user.role !== "receptionist")) {
     return <div className="p-10">Access Denied</div>;
@@ -118,9 +145,7 @@ export default function IpPatientsPage() {
                       Admitted On
                     </p>
                     <p className="text-sm font-medium text-slate-700">
-                      {p.admissionDate
-                        ? new Date(p.admissionDate).toLocaleDateString()
-                        : "-"}
+                      {p.admissionDate ? formatDate(p.admissionDate) : "-"}
                     </p>
                   </div>
                   <div className="space-y-1">
@@ -129,17 +154,27 @@ export default function IpPatientsPage() {
                     </p>
                     <p className="text-sm font-medium text-slate-700">
                       {p.expectedDischargeDate
-                        ? new Date(p.expectedDischargeDate).toLocaleDateString()
+                        ? formatDate(p.expectedDischargeDate)
                         : "Not Set"}
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-auto pt-4 flex justify-between items-center text-xs text-slate-400">
-                  <span>Mobile: {p.mobile}</span>
-                  <span className="text-sky-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-                    View Details ➔
-                  </span>
+                <div className="mt-auto pt-4 flex justify-between items-center text-xs">
+                  <span className="text-slate-400">Mobile: {p.mobile}</span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[10px] uppercase font-bold"
+                      onClick={(e) => handleEditClick(e, p)}
+                    >
+                      Edit
+                    </Button>
+                    <span className="text-sky-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity self-center">
+                      View Details ➔
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -152,6 +187,47 @@ export default function IpPatientsPage() {
           </div>
         )}
       </main>
+      {/* Edit IP Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-slate-900 border-l-4 border-sky-600 pl-3">
+              Edit Stay Details
+            </h3>
+            <div className="text-sm text-slate-600">
+              Patient: <span className="font-semibold">{selectedIp?.name}</span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase text-slate-500">
+                Expected Discharge Date
+              </label>
+              <input
+                type="date"
+                className="w-full p-2 text-sm border rounded-md focus:outline-none focus:border-sky-500 bg-slate-50"
+                value={editDischargeDate}
+                onChange={(e) => setEditDischargeDate(e.target.value)}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                className="flex-1 h-9 text-xs uppercase"
+                variant="outline"
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1 h-9 text-xs uppercase"
+                onClick={handleUpdateDischarge}
+              >
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppLayout>
   );
 }

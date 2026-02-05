@@ -6,6 +6,7 @@ import axios from "axios";
 import { AppLayout } from "@/components/AppLayout";
 import { Button } from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import { formatDate } from "@/lib/utils";
 
 export default function ScheduledVisitsPage() {
   const { user } = useAuth();
@@ -78,7 +79,7 @@ export default function ScheduledVisitsPage() {
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-bold text-slate-800">Scheduled Visits</h1>
           <p className="text-xs text-slate-500">
-            Patients scheduled for today ({new Date().toLocaleDateString()})
+            Patients scheduled for today ({formatDate(new Date())})
           </p>
         </div>
         <Button variant="ghost" onClick={() => router.back()}>

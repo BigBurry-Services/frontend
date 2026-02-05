@@ -4,6 +4,9 @@ import Invoice from "@/models/Invoice";
 import Visit from "@/models/Visit";
 import User from "@/models/User";
 import Inventory from "@/models/Inventory";
+import PatientPackage from "@/models/PatientPackage";
+import Package from "@/models/Package";
+import StockLog from "@/models/StockLog";
 
 // Helper to get pending dues (ported from NestJS BillingService)
 async function getPendingDues(patientID: string) {
@@ -102,6 +105,35 @@ async function getPendingDues(patientID: string) {
     }
   }
 
+  // D. Patient Package Charges
+  const activeAssignments = await PatientPackage.find({
+    patientID,
+    status: "active",
+  });
+
+  for (const assignment of activeAssignments) {
+    const pkg = await Package.findOne({ id: assignment.packageID });
+    if (pkg) {
+      const item = {
+        description: `Package: ${pkg.name}`,
+        amount: pkg.totalPrice,
+        packageAssignmentID: assignment.id, // Reference to the assignment
+      };
+
+      // Check if this specific assignment has been paid for
+      const genericKey = `${item.description}-${item.amount}`;
+      if ((paidGenericCounts.get(genericKey) || 0) > 0) {
+        paidGenericCounts.set(
+          genericKey,
+          paidGenericCounts.get(genericKey)! - 1,
+        );
+        continue;
+      }
+
+      dueItems.push(item);
+    }
+  }
+
   return dueItems;
 }
 
@@ -170,6 +202,53 @@ export async function POST(req: NextRequest) {
       totalAmount,
     });
 
+    // Process Stock Deduction for Medicines
+    for (const item of items) {
+      if (!item.description) continue;
+      const match = item.description.match(/^Medicine: (.+) \(x(\d+)\)$/);
+      if (match) {
+        const medName = match[1];
+        const qty = parseInt(match[2]);
+
+        const inventoryItem = await Inventory.findOne({ name: medName });
+        if (inventoryItem && inventoryItem.batches) {
+          let remainingToDeduct = qty;
+          // Sort batches by expiry ascending (FIFO)
+          const newBatches = [...inventoryItem.batches].sort(
+            (a: any, b: any) =>
+              new Date(a.expiryDate).getTime() -
+              new Date(b.expiryDate).getTime(),
+          );
+
+          for (let i = 0; i < newBatches.length; i++) {
+            if (remainingToDeduct <= 0) break;
+            const batchQty = Number(newBatches[i].quantity);
+
+            if (batchQty >= remainingToDeduct) {
+              newBatches[i].quantity = batchQty - remainingToDeduct;
+              remainingToDeduct = 0;
+            } else {
+              remainingToDeduct -= batchQty;
+              newBatches[i].quantity = 0;
+            }
+          }
+
+          // Update inventory
+          await Inventory.update(inventoryItem.id, { batches: newBatches });
+
+          // Log Stock Out
+          await StockLog.create({
+            itemId: inventoryItem.id,
+            itemName: medName,
+            change: qty,
+            type: "OUT",
+            reason: `Invoice #${invoiceNumber}`,
+            timestamp: new Date(),
+          });
+        }
+      }
+    }
+
     // Check for visits where ALL items are now paid
     const visitIDs = Array.from(
       new Set(items.map((i: any) => i.visitID).filter((id: any) => !!id)),
@@ -185,6 +264,17 @@ export async function POST(req: NextRequest) {
           status: "Completed",
         });
       }
+    }
+
+    // Check for package assignments that are now paid
+    const packageAssignmentIDs = Array.from(
+      new Set(
+        items.map((i: any) => i.packageAssignmentID).filter((id: any) => !!id),
+      ),
+    ) as string[];
+
+    for (const assignmentID of packageAssignmentIDs) {
+      await PatientPackage.update(assignmentID, { status: "completed" });
     }
 
     return NextResponse.json(savedInvoice, { status: 201 });

@@ -1,24 +1,67 @@
 [
   {
-    "name": "AMAL BENNY",
-    "age": 34,
+    "id": "pat-1",
+    "patientID": "P-1001",
+    "name": "John Doe",
+    "age": 35,
     "gender": "Male",
-    "mobile": "56443534534",
-    "address": "chully po",
-    "patientID": "PAT-2026-001",
-    "id": "1769864049640lz8sa",
-    "createdAt": "2026-01-31T12:54:09.640Z",
-    "updatedAt": "2026-01-31T12:54:09.640Z"
+    "mobile": "9876543210",
+    "address": "123 Main St, Cityville",
+    "createdAt": "2026-02-03T09:00:00.000Z",
+    "updatedAt": "2026-02-03T09:00:00.000Z"
   },
   {
-    "name": "appu",
-    "age": 19,
+    "id": "pat-2",
+    "patientID": "P-1002",
+    "name": "Jane Roe",
+    "age": 28,
+    "gender": "Female",
+    "mobile": "9876543211",
+    "address": "456 Oak Ave, Townsville",
+    "createdAt": "2026-02-03T09:15:00.000Z",
+    "updatedAt": "2026-02-05T09:37:17.049Z",
+    "documents": [
+      {
+        "id": "1770284237046",
+        "name": "img_6976468b9b70a.png",
+        "type": "image/png",
+        "url": "/uploads/patients/pat-2/1770284237044-img_6976468b9b70a.png",
+        "size": 388854,
+        "uploadedAt": "2026-02-05T09:37:17.046Z"
+      }
+    ]
+  },
+  {
+    "id": "pat-3",
+    "patientID": "P-1003",
+    "name": "Baby Mike",
+    "age": 4,
+    "gender": "Male",
+    "mobile": "9876543212",
+    "guardianName": "Mike Parent",
+    "address": "789 Pine Ln, Villageton",
+    "createdAt": "2026-02-03T09:30:00.000Z",
+    "updatedAt": "2026-02-05T09:37:48.511Z",
+    "documents": [
+      {
+        "id": "1770284268508",
+        "name": "img_697b7ba51dc20 (1).jpg",
+        "type": "image/jpeg",
+        "url": "/uploads/patients/pat-3/1770284268505-img_697b7ba51dc20_(1).jpg",
+        "size": 106050,
+        "uploadedAt": "2026-02-05T09:37:48.508Z"
+      }
+    ]
+  },
+  {
+    "name": "bigburry hypersystems",
+    "age": 45,
     "gender": "Male",
     "mobile": "08075107490",
     "address": "7/130, PUTHUSSERY COMPLEX",
-    "patientID": "PAT-2026-002",
-    "id": "1770036564289d6uvt",
-    "createdAt": "2026-02-02T12:49:24.289Z",
-    "updatedAt": "2026-02-02T12:49:24.289Z"
+    "patientID": "PAT-2026-004",
+    "id": "1770113655108nbyh8",
+    "createdAt": "2026-02-03T10:14:15.109Z",
+    "updatedAt": "2026-02-03T10:14:15.109Z"
   }
 ]

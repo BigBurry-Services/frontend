@@ -2,10 +2,14 @@
 
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
-import { Sidebar } from "./Sidebar";
+import { AppSidebar } from "./Sidebar";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { FaBars } from "react-icons/fa";
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { Separator } from "@/components/ui/separator";
 
 export const AppLayout = ({
   children,
@@ -16,7 +20,6 @@ export const AppLayout = ({
 }) => {
   const { user, logout, loading } = useAuth();
   const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
 
   // Hide sidebar on login page and root
   const hideSidebar = pathname === "/login" || pathname === "/";
@@ -28,34 +31,24 @@ export const AppLayout = ({
   }
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden relative">
-      <Sidebar
+    <SidebarProvider>
+      <AppSidebar
         user={user}
         logout={logout}
         extraContent={extraSidebarContent}
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
       />
-
-      <div className="flex-1 flex flex-col h-screen overflow-y-auto">
-        <header className="lg:hidden bg-[#0f172a] p-4 flex items-center justify-between no-print border-b border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-sky-500 rounded-lg flex items-center justify-center text-white font-bold">
-              L
-            </div>
-            <span className="text-xl font-bold text-white tracking-tight">
-              Lite HMS
-            </span>
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 border-b px-4 md:hidden no-print">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            {/* Breadcrumb could go here */}
           </div>
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 text-slate-300 hover:text-white"
-          >
-            <FaBars size={24} />
-          </button>
         </header>
-        {children}
-      </div>
-    </div>
+        <div className="flex-1 flex flex-col gap-2 md:gap-4 p-1 md:p-4 md:pt-0">
+          {children}
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 };

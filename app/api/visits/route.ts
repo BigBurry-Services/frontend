@@ -38,6 +38,23 @@ export async function POST(req: NextRequest) {
     const endOfDay = new Date(visitDate);
     endOfDay.setHours(23, 59, 59, 999);
 
+    // Check for existing visit for the same patient on the same day
+    const existingVisit = await Visit.findOne({
+      patientID: body.patientID,
+      visitDate: { $gte: startOfDay, $lte: endOfDay },
+    });
+
+    if (existingVisit) {
+      return NextResponse.json(
+        {
+          message:
+            "A visit already exists for this patient on the selected date. Please edit the existing visit instead.",
+          existingVisitID: existingVisit.id,
+        },
+        { status: 400 },
+      );
+    }
+
     const count = await Visit.countDocuments({
       visitDate: { $gte: startOfDay, $lte: endOfDay },
     });

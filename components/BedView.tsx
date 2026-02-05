@@ -4,6 +4,38 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { formatDate } from "@/lib/utils";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Trash2,
+  Bed,
+  BedDouble,
+  Activity,
+  AlertCircle,
+  Plus,
+  LayoutGrid,
+} from "lucide-react";
 
 interface Resource {
   resourceID: string;
@@ -20,6 +52,8 @@ export default function BedView() {
   const [selectedBed, setSelectedBed] = useState<Resource | null>(null);
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDischargeDate, setEditDischargeDate] = useState("");
 
   // Creation Form State
   const [formData, setFormData] = useState({
@@ -94,7 +128,10 @@ export default function BedView() {
 
   const handleBedClick = (bed: Resource) => {
     setSelectedBed(bed);
-    if (!bed.isOccupied) {
+    setIsEditing(false);
+    if (bed.isOccupied) {
+      setEditDischargeDate(bed.expectedDischargeDate || "");
+    } else {
       setAssignData((prev) => ({
         ...prev,
         patientID: "",
@@ -122,6 +159,26 @@ export default function BedView() {
     }
   };
 
+  const handleUpdateAssignment = async () => {
+    if (!selectedBed) return;
+    try {
+      await axios.patch(
+        `${apiUrl}/resources/${selectedBed.resourceID}/status`,
+        {
+          isOccupied: true,
+          patientID: selectedBed.currentPatientID,
+          admissionDate: selectedBed.admissionDate,
+          expectedDischargeDate: editDischargeDate,
+        },
+      );
+      setIsEditing(false);
+      setSelectedBed(null);
+      fetchBeds();
+    } catch (error) {
+      alert("Failed to update assignment");
+    }
+  };
+
   const handleDischarge = async () => {
     if (!selectedBed) return;
     if (confirm("Are you sure you want to discharge this patient?")) {
@@ -141,199 +198,359 @@ export default function BedView() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Create Bed Section */}
-      <div className="md:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-slate-100 h-fit">
-        <h2 className="text-lg font-semibold mb-4 text-slate-800">
-          Add New Bed
-        </h2>
-        <form onSubmit={handleCreate} className="space-y-4">
-          <Input
-            label="Bed Name / Number"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-            placeholder="e.g. Bed 101"
-          />
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700">Type</label>
-            <select
-              className="w-full h-10 rounded-md border border-slate-300 px-3 bg-white text-sm"
-              value={formData.type}
-              onChange={(e) =>
-                setFormData({ ...formData, type: e.target.value })
-              }
-            >
-              <option value="General">General Ward</option>
-              <option value="ICU">ICU</option>
-              <option value="Private">Private Room</option>
-              <option value="Emergency">Emergency</option>
-            </select>
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative items-start">
+      {/* Create Bed Section - Sticky */}
+      <Card className="md:col-span-1 border-primary/20 md:sticky md:top-6 shadow-md">
+        <CardHeader className="bg-primary/5 pb-4">
+          <div className="flex items-center gap-2 text-primary mb-1">
+            <LayoutGrid className="h-5 w-5" />
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Management
+            </span>
           </div>
-          <Button type="submit" className="w-full mt-2" disabled={loading}>
-            {loading ? "Adding..." : "Add Bed"}
-          </Button>
-        </form>
-      </div>
+          <CardTitle className="text-xl">Add New Bed</CardTitle>
+          <CardDescription>
+            Register a new bed or room in the system.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <form onSubmit={handleCreate} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="bedName" className="flex items-center gap-2">
+                <Bed className="h-4 w-4 text-muted-foreground" />
+                Bed Name / Number
+              </Label>
+              <Input
+                id="bedName"
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                required
+                placeholder="e.g. Bed 101"
+                className="bg-background"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bedType" className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                Ward / Type
+              </Label>
+              <Select
+                value={formData.type}
+                onValueChange={(val) => setFormData({ ...formData, type: val })}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="General">General Ward</SelectItem>
+                  <SelectItem value="ICU">ICU</SelectItem>
+                  <SelectItem value="Private">Private Room</SelectItem>
+                  <SelectItem value="Emergency">Emergency</SelectItem>
+                  <SelectItem value="Maternity">Maternity</SelectItem>
+                  <SelectItem value="Pediatric">Pediatric</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="submit"
+              className="w-full font-semibold shadow-sm mt-2"
+              disabled={loading}
+              size="lg"
+            >
+              {loading ? (
+                "Adding..."
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" /> Add Bed to Inventory
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Bed List Section */}
-      <div className="md:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-slate-800">Current Beds</h2>
-          <Button variant="ghost" onClick={fetchBeds}>
-            Refresh
-          </Button>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {beds.map((bed) => (
-            <div
-              key={bed.resourceID}
-              onClick={() => handleBedClick(bed)}
-              className={`cursor-pointer p-4 rounded-lg border flex flex-col items-center justify-center transition-all hover:shadow-md relative group ${
-                bed.isOccupied
-                  ? "bg-red-50 border-red-200 text-red-700"
-                  : "bg-green-50 border-green-200 text-green-700"
-              }`}
-            >
-              <button
-                onClick={(e) => handleDelete(bed.resourceID, e)}
-                className="absolute top-2 right-2 p-1 text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity bg-white/50 rounded-full"
-                title="Delete Bed"
+      <Card className="md:col-span-2 border-border/50 shadow-sm">
+        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between space-y-2 sm:space-y-0 pb-4 border-b">
+          <div>
+            <CardTitle>Current Bed Inventory</CardTitle>
+            <CardDescription>
+              Real-time occupancy status of all hospital beds.
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+              Total: {beds.length}
+            </span>
+            <Button variant="outline" size="sm" onClick={fetchBeds}>
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="bg-muted/10 min-h-[400px] p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {beds.map((bed) => (
+              <div
+                key={bed.resourceID}
+                onClick={() => handleBedClick(bed)}
+                className={`cursor-pointer group relative overflow-hidden rounded-xl border p-4 transition-all hover:shadow-lg hover:-translate-y-1 ${
+                  bed.isOccupied
+                    ? "bg-white border-red-200 shadow-red-100"
+                    : "bg-white border-slate-200 hover:border-sky-300"
+                }`}
               >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
+                <div className="absolute top-0 right-0 p-2">
+                  {bed.isOccupied ? (
+                    <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                  ) : (
+                    <div className="h-2 w-2 rounded-full bg-green-500" />
+                  )}
+                </div>
 
-              <span className="font-bold text-lg">{bed.name}</span>
-              <span className="text-xs uppercase font-semibold mt-1">
-                {bed.type}
-              </span>
-              <span className="text-xs mt-1 opacity-75">
-                {bed.isOccupied ? "Occupied" : "Available"}
-              </span>
-            </div>
-          ))}
-          {beds.length === 0 && (
-            <p className="text-slate-400 col-span-full text-center py-8">
-              No beds configured
-            </p>
-          )}
-        </div>
-      </div>
-
-      {selectedBed && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-center p-4 border-b bg-slate-50">
-              <h3 className="font-bold text-slate-800">
-                {selectedBed.name} (
-                {selectedBed.isOccupied ? "Occupied" : "Available"})
-              </h3>
-              <button
-                onClick={() => setSelectedBed(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {selectedBed.isOccupied ? (
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-600">
-                    Current Patient:{" "}
-                    <strong>{selectedBed.currentPatientID}</strong>
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    Admission Date:{" "}
-                    {selectedBed.admissionDate
-                      ? new Date(selectedBed.admissionDate).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                  <Button
-                    className="w-full bg-red-600 hover:bg-red-700 text-white"
-                    onClick={handleDischarge}
+                <div className="flex flex-col gap-3">
+                  <div
+                    className={`p-2.5 rounded-lg w-fit ${
+                      bed.isOccupied
+                        ? "bg-red-50 text-red-600"
+                        : "bg-sky-50 text-sky-600"
+                    }`}
                   >
-                    Discharge Patient
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
+                    {bed.isOccupied ? (
+                      <Activity className="h-5 w-5" />
+                    ) : (
+                      <Bed className="h-5 w-5" />
+                    )}
+                  </div>
+
                   <div>
-                    <label className="text-sm font-medium text-slate-700 block mb-1">
-                      Select Patient
-                    </label>
-                    <select
-                      className="w-full border rounded-md p-2 text-sm"
-                      value={assignData.patientID}
-                      onChange={(e) =>
-                        setAssignData({
-                          ...assignData,
-                          patientID: e.target.value,
-                        })
-                      }
+                    <h3 className="font-bold text-slate-800 leading-tight">
+                      {bed.name}
+                    </h3>
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mt-1 tracking-wider">
+                      {bed.type}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 mt-auto border-t border-slate-50 flex justify-between items-center">
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        bed.isOccupied
+                          ? "bg-red-100 text-red-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
                     >
-                      <option value="">-- Choose Patient --</option>
-                      {patients.map((p: any) => (
-                        <option key={p.patientID} value={p.patientID}>
-                          {p.name} ({p.patientID})
-                        </option>
-                      ))}
-                    </select>
+                      {bed.isOccupied ? "Occupied" : "Vacant"}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-destructive -mr-1"
+                      onClick={(e) => handleDelete(bed.resourceID, e)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-700 block mb-1">
-                      Admission Date
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full border rounded-md p-2 text-sm"
-                      value={assignData.admissionDate}
-                      onChange={(e) =>
-                        setAssignData({
-                          ...assignData,
-                          admissionDate: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-700 block mb-1">
-                      Expected Discharge
-                    </label>
-                    <input
-                      type="date"
-                      className="w-full border rounded-md p-2 text-sm"
-                      value={assignData.expectedDischargeDate}
-                      onChange={(e) =>
-                        setAssignData({
-                          ...assignData,
-                          expectedDischargeDate: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <Button className="w-full" onClick={handleAssign}>
-                    Assign Bed
-                  </Button>
                 </div>
+              </div>
+            ))}
+            {beds.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
+                <div className="bg-slate-50 p-4 rounded-full mb-4">
+                  <BedDouble className="h-10 w-10 opacity-20 text-slate-900" />
+                </div>
+                <h3 className="font-semibold text-slate-900">No Beds Found</h3>
+                <p className="text-sm mt-1">
+                  Start by adding a new bed from the form.
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Dialog
+        open={!!selectedBed}
+        onOpenChange={(open) => !open && setSelectedBed(null)}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Bed className="h-5 w-5 text-sky-600" />
+              {selectedBed?.name} Details
+            </DialogTitle>
+            <DialogDescription>
+              Current Status:{" "}
+              <span
+                className={
+                  selectedBed?.isOccupied
+                    ? "text-red-600 font-bold"
+                    : "text-green-600 font-bold"
+                }
+              >
+                {selectedBed?.isOccupied ? "Occupied" : "Available"}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedBed?.isOccupied ? (
+            <div className="space-y-4 py-4">
+              <div className="rounded-xl border bg-slate-50/50 p-5 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-white p-2 rounded-lg shadow-sm">
+                    <AlertCircle className="h-5 w-5 text-sky-500" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                      Patient ID
+                    </div>
+                    <div className="font-mono font-bold text-lg text-slate-900">
+                      {selectedBed.currentPatientID}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="bg-white p-2 rounded-lg shadow-sm">
+                    <Activity className="h-5 w-5 text-green-500" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                      Admitted On
+                    </div>
+                    <div className="font-medium text-slate-900">
+                      {selectedBed.admissionDate
+                        ? formatDate(selectedBed.admissionDate)
+                        : "N/A"}
+                    </div>
+                  </div>
+                </div>
+
+                {isEditing ? (
+                  <div className="space-y-2 pt-2 border-t mt-2">
+                    <Label className="text-[10px] uppercase">
+                      Edit Expected Discharge
+                    </Label>
+                    <Input
+                      type="date"
+                      value={editDischargeDate}
+                      onChange={(e) => setEditDischargeDate(e.target.value)}
+                      className="bg-white h-8"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-8"
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="flex-1 h-8"
+                        onClick={handleUpdateAssignment}
+                      >
+                        Update
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between pt-2 border-t mt-2">
+                    <div>
+                      <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                        Expected Discharge
+                      </div>
+                      <div className="font-medium text-slate-900">
+                        {selectedBed.expectedDischargeDate
+                          ? formatDate(selectedBed.expectedDischargeDate)
+                          : "Not Set"}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-sky-600 font-bold"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      Change
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {!isEditing && (
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={handleDischarge}
+                >
+                  Discharge Patient & Free Bed
+                </Button>
               )}
             </div>
-          </div>
-        </div>
-      )}
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Select Patient to Admit</Label>
+                <Select
+                  value={assignData.patientID}
+                  onValueChange={(val) =>
+                    setAssignData({ ...assignData, patientID: val })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Search or select patient..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {patients.map((p: any) => (
+                      <SelectItem key={p.patientID} value={p.patientID}>
+                        <span className="font-medium">{p.name}</span>
+                        <span className="text-muted-foreground text-xs ml-2">
+                          ({p.patientID})
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Admission Date</Label>
+                  <Input
+                    type="date"
+                    value={assignData.admissionDate}
+                    onChange={(e) =>
+                      setAssignData({
+                        ...assignData,
+                        admissionDate: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Expected Discharge</Label>
+                  <Input
+                    type="date"
+                    value={assignData.expectedDischargeDate}
+                    onChange={(e) =>
+                      setAssignData({
+                        ...assignData,
+                        expectedDischargeDate: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+
+              <Button className="w-full mt-2" onClick={handleAssign}>
+                Assign Bed to Patient
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

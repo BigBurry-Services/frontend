@@ -5,6 +5,8 @@ export interface IExpense {
   description: string;
   amount: number;
   category: string;
+  paymentMode: string;
+  paymentBreakdown?: { mode: string; amount: number }[];
   date: string;
   createdAt: Date;
   updatedAt: Date;

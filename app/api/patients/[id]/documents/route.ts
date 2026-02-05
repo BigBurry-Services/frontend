@@ -1,0 +1,122 @@
+import { NextRequest, NextResponse } from "next/server";
+import dbConnect from "@/lib/db";
+import Patient from "@/models/Patient";
+import fs from "fs/promises";
+import path from "path";
+
+const UPLOAD_BASE = path.join(process.cwd(), "public", "uploads", "patients");
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const formData = await req.formData();
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return NextResponse.json(
+        { message: "No file uploaded" },
+        { status: 400 },
+      );
+    }
+
+    await dbConnect();
+    const patient =
+      (await Patient.findOne({ patientID: id })) ||
+      (await Patient.findById(id));
+    if (!patient) {
+      return NextResponse.json(
+        { message: "Patient not found" },
+        { status: 404 },
+      );
+    }
+
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    const patientUploadDir = path.join(UPLOAD_BASE, patient.id);
+    await fs.mkdir(patientUploadDir, { recursive: true });
+
+    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    const filePath = path.join(patientUploadDir, fileName);
+    await fs.writeFile(filePath, buffer);
+
+    const fileUrl = `/uploads/patients/${patient.id}/${fileName}`;
+
+    const newDoc = {
+      id: Date.now().toString(),
+      name: file.name,
+      type: file.type,
+      url: fileUrl,
+      size: file.size,
+      uploadedAt: new Date(),
+    };
+
+    const documents = patient.documents || [];
+    documents.push(newDoc);
+
+    await Patient.update(patient.id, { documents });
+
+    return NextResponse.json(newDoc, { status: 201 });
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(req.url);
+    const docId = searchParams.get("docId");
+
+    if (!docId) {
+      return NextResponse.json(
+        { message: "Document ID required" },
+        { status: 400 },
+      );
+    }
+
+    await dbConnect();
+    const patient =
+      (await Patient.findOne({ patientID: id })) ||
+      (await Patient.findById(id));
+    if (!patient) {
+      return NextResponse.json(
+        { message: "Patient not found" },
+        { status: 404 },
+      );
+    }
+
+    const documents = patient.documents || [];
+    const docIndex = documents.findIndex((d: any) => d.id === docId);
+
+    if (docIndex === -1) {
+      return NextResponse.json(
+        { message: "Document not found" },
+        { status: 404 },
+      );
+    }
+
+    const doc = documents[docIndex];
+
+    // Try to delete the physical file
+    try {
+      const filePath = path.join(process.cwd(), "public", doc.url);
+      await fs.unlink(filePath);
+    } catch (e) {
+      console.error("Failed to delete physical file:", e);
+    }
+
+    documents.splice(docIndex, 1);
+    await Patient.update(patient.id, { documents });
+
+    return NextResponse.json({ message: "Document deleted" });
+  } catch (error: any) {
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  }
+}

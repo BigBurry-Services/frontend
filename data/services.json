@@ -1,10 +1,10 @@
 [
   {
-    "name": "x ray",
-    "price": 200,
-    "description": "testing",
-    "id": "1769921784659ouhg3",
-    "createdAt": "2026-02-01T04:56:24.659Z",
-    "updatedAt": "2026-02-01T04:56:24.659Z"
+    "id": "srv-2",
+    "name": "Blood Test",
+    "description": "Complete Blood Count",
+    "price": 500,
+    "createdAt": "2026-02-03T08:00:00.000Z",
+    "updatedAt": "2026-02-03T08:00:00.000Z"
   }
 ]

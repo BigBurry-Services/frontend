@@ -8,6 +8,7 @@ export interface IInvoice {
   items: { description: string; amount: number; visitID?: string }[];
   totalAmount: number;
   paymentMode: string;
+  paymentBreakdown?: { mode: string; amount: number }[];
   createdAt: Date;
   updatedAt: Date;
 }
