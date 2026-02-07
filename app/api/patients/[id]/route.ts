@@ -43,9 +43,11 @@ export async function PUT(
     const body = await req.json();
 
     let patient = await Patient.findOne({ patientID: id });
-    const actualId = patient ? patient.id : id;
+    const filter = patient ? { _id: patient._id } : { _id: id };
 
-    const updatedPatient = await Patient.update(actualId, body);
+    const updatedPatient = await Patient.findOneAndUpdate(filter, body, {
+      new: true,
+    });
 
     if (!updatedPatient) {
       return NextResponse.json(

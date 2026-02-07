@@ -12,46 +12,36 @@ export async function GET(req: NextRequest) {
 
     const scope = searchParams.get("scope") || "all";
 
-    // Fetch all records
-    const allInvoices = await Invoice.find();
-    const allExpenses = await Expense.find();
-
-    let sales, expenses;
+    const invoiceFilter: any = {};
+    const expenseFilter: any = {};
 
     if (scope === "daily") {
-      sales = allInvoices.filter(
-        (inv) => new Date(inv.createdAt).toISOString().split("T")[0] === date,
-      );
-      expenses = allExpenses.filter((exp) => exp.date === date);
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      invoiceFilter.createdAt = { $gte: startOfDay, $lte: endOfDay };
+      expenseFilter.date = date; // Expense date is string YYYY-MM-DD
     } else if (scope === "monthly") {
-      const monthPrefix = date.substring(0, 7); // YYYY-MM
-      sales = allInvoices.filter(
-        (inv) =>
-          new Date(inv.createdAt)
-            .toISOString()
-            .split("T")[0]
-            .substring(0, 7) === monthPrefix,
-      );
-      expenses = allExpenses.filter(
-        (exp) => exp.date.substring(0, 7) === monthPrefix,
-      );
+      const monthPrefix = date.substring(0, 7);
+      const startOfMonth = new Date(monthPrefix + "-01");
+      const endOfMonth = new Date(startOfMonth);
+      endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+
+      invoiceFilter.createdAt = { $gte: startOfMonth, $lt: endOfMonth };
+      expenseFilter.date = { $regex: `^${monthPrefix}` };
     } else if (scope === "yearly") {
-      const yearPrefix = date.substring(0, 4); // YYYY
-      sales = allInvoices.filter(
-        (inv) =>
-          new Date(inv.createdAt)
-            .toISOString()
-            .split("T")[0]
-            .substring(0, 4) === yearPrefix,
-      );
-      expenses = allExpenses.filter(
-        (exp) => exp.date.substring(0, 4) === yearPrefix,
-      );
-    } else {
-      // scope === "all"
-      sales = allInvoices;
-      expenses = allExpenses;
+      const yearPrefix = date.substring(0, 4);
+      const startOfYear = new Date(yearPrefix + "-01-01");
+      const endOfYear = new Date(yearPrefix + "-12-31T23:59:59.999Z");
+
+      invoiceFilter.createdAt = { $gte: startOfYear, $lte: endOfYear };
+      expenseFilter.date = { $regex: `^${yearPrefix}` };
     }
+
+    const sales = await Invoice.find(invoiceFilter).lean();
+    const expenses = await Expense.find(expenseFilter).lean();
 
     const totalSales = sales.reduce((sum, inv) => sum + inv.totalAmount, 0);
     const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);

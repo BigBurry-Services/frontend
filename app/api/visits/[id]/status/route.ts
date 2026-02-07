@@ -13,7 +13,7 @@ export async function PATCH(
     const { status, notes, prescriptions, services, doctorID } =
       await req.json();
 
-    const visit = await Visit.findOne({ id });
+    const visit = await Visit.findById(id);
 
     if (!visit) {
       return NextResponse.json({ message: "Visit not found" }, { status: 404 });
@@ -75,16 +75,16 @@ export async function PATCH(
         }
       }
 
-      await Visit.update(id, visit);
+      await visit.save();
       return NextResponse.json(visit);
     }
 
     // Legacy fallback or generic update
-    const updatedVisit = await Visit.update(id, {
-      status,
-      notes,
-      prescriptions,
-    });
+    const updatedVisit = await Visit.findByIdAndUpdate(
+      id,
+      { status, notes, prescriptions },
+      { new: true },
+    );
 
     return NextResponse.json(updatedVisit);
   } catch (error: any) {

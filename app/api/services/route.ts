@@ -6,8 +6,7 @@ import Service from "@/models/Service";
 export async function GET() {
   try {
     await dbConnect();
-    const services = await Service.find();
-    services.sort((a, b) => a.name.localeCompare(b.name));
+    const services = await Service.find().sort({ name: 1 }).lean();
     return NextResponse.json(services);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -37,7 +36,7 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get("id");
     if (!id)
       return NextResponse.json({ message: "ID required" }, { status: 400 });
-    await Service.delete(id);
+    await Service.findByIdAndDelete(id);
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });

@@ -29,10 +29,10 @@ export async function POST(req: NextRequest) {
       );
       if (totalQty > 0) {
         await StockLog.create({
-          itemId: newItem.id,
+          itemID: newItem.id,
           itemName: newItem.name,
-          change: totalQty,
-          type: "IN",
+          quantity: totalQty,
+          type: "addition",
           reason: "Initial Stock",
           timestamp: new Date(),
         });
@@ -53,7 +53,9 @@ export async function PATCH(req: NextRequest) {
     const { id, attrs } = body;
 
     if (id && attrs) {
-      const updatedItem = await Inventory.update(id, attrs);
+      const updatedItem = await Inventory.findByIdAndUpdate(id, attrs, {
+        new: true,
+      }).lean();
       return NextResponse.json(updatedItem);
     }
 

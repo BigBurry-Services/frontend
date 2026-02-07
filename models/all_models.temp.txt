@@ -1,0 +1,202 @@
+import mongoose, { Schema, Document, Model } from "mongoose";
+
+// AuditLog
+export interface IAuditLog extends Document {
+  userId: string;
+  username: string;
+  action: "LOGIN" | "LOGOUT";
+  timestamp: Date;
+  details?: string;
+}
+const AuditLogSchema = new Schema({
+  userId: String,
+  username: String,
+  action: { type: String, enum: ["LOGIN", "LOGOUT"] },
+  timestamp: { type: Date, default: Date.now },
+  details: String
+}, { timestamps: true });
+export const AuditLog = mongoose.models.AuditLog || mongoose.model<IAuditLog>("AuditLog", AuditLogSchema);
+
+// Category
+export interface ICategory extends Document {
+  name: string;
+  description?: string;
+}
+const CategorySchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  description: String
+}, { timestamps: true });
+export const Category = mongoose.models.Category || mongoose.model<ICategory>("Category", CategorySchema);
+
+// Department
+export interface IDepartment extends Document {
+  name: string;
+  description?: string;
+  status: "active" | "inactive";
+}
+const DepartmentSchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  description: String,
+  status: { type: String, enum: ["active", "inactive"], default: "active" }
+}, { timestamps: true });
+export const Department = mongoose.models.Department || mongoose.model<IDepartment>("Department", DepartmentSchema);
+
+// Expense
+export interface IExpense extends Document {
+  description: string;
+  amount: number;
+  category: string;
+  paymentMode: string;
+  paymentBreakdown?: { mode: string; amount: number }[];
+  date: Date;
+}
+const ExpenseSchema = new Schema({
+  description: String,
+  amount: Number,
+  category: String,
+  paymentMode: String,
+  paymentBreakdown: [{ mode: String, amount: Number }],
+  date: { type: Date, default: Date.now }
+}, { timestamps: true });
+export const Expense = mongoose.models.Expense || mongoose.model<IExpense>("Expense", ExpenseSchema);
+
+// Inventory (Medicine)
+export interface IBatch {
+  batchNumber: string;
+  quantity: number;
+  expiryDate: Date;
+  addedDate: Date;
+}
+export interface IInventory extends Document {
+  name: string;
+  categoryID: string;
+  unitPrice: number;
+  batches: IBatch[];
+}
+const InventorySchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  categoryID: String,
+  unitPrice: Number,
+  batches: [{
+    batchNumber: String,
+    quantity: Number,
+    expiryDate: Date,
+    addedDate: { type: Date, default: Date.now }
+  }]
+}, { timestamps: true });
+export const Inventory = mongoose.models.Inventory || mongoose.model<IInventory>("Inventory", InventorySchema);
+
+// Invoice
+export interface IInvoice extends Document {
+  invoiceNumber: string;
+  patientID: string;
+  patientName: string;
+  items: { description: string; amount: number; visitID?: string; packageAssignmentID?: string }[];
+  totalAmount: number;
+  paymentMode: string;
+  paymentBreakdown?: { mode: string; amount: number }[];
+}
+const InvoiceSchema = new Schema({
+  invoiceNumber: { type: String, unique: true },
+  patientID: String,
+  patientName: String,
+  items: [{ description: String, amount: Number, visitID: String, packageAssignmentID: String }],
+  totalAmount: Number,
+  paymentMode: String,
+  paymentBreakdown: [{ mode: String, amount: Number }]
+}, { timestamps: true });
+export const Invoice = mongoose.models.Invoice || mongoose.model<IInvoice>("Invoice", InvoiceSchema);
+
+// Package
+export interface IPackage extends Document {
+  name: string;
+  description: string;
+  totalPrice: number;
+  items: { description: string; amount: number }[];
+}
+const PackageSchema = new Schema({
+  name: { type: String, required: true },
+  description: String,
+  totalPrice: Number,
+  items: [{ description: String, amount: Number }]
+}, { timestamps: true });
+export const Package = mongoose.models.Package || mongoose.model<IPackage>("Package", PackageSchema);
+
+// PatientPackage
+export interface IPatientPackage extends Document {
+  patientID: string;
+  packageID: string;
+  status: "active" | "completed" | "cancelled";
+  assignedDate: Date;
+}
+const PatientPackageSchema = new Schema({
+  patientID: String,
+  packageID: String,
+  status: { type: String, enum: ["active", "completed", "cancelled"], default: "active" },
+  assignedDate: { type: Date, default: Date.now }
+}, { timestamps: true });
+export const PatientPackage = mongoose.models.PatientPackage || mongoose.model<IPatientPackage>("PatientPackage", PatientPackageSchema);
+
+// Resource (Beds)
+export interface IResource extends Document {
+  name: string;
+  type: string;
+  status: "available" | "occupied" | "maintenance";
+  patientID?: string;
+  patientName?: string;
+  pricePerDay: number;
+}
+const ResourceSchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  type: String,
+  status: { type: String, enum: ["available", "occupied", "maintenance"], default: "available" },
+  patientID: String,
+  patientName: String,
+  pricePerDay: Number
+}, { timestamps: true });
+export const Resource = mongoose.models.Resource || mongoose.model<IResource>("Resource", ResourceSchema);
+
+// Service
+export interface IService extends Document {
+  name: string;
+  price: number;
+  category?: string;
+}
+const ServiceSchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  price: Number,
+  category: String
+}, { timestamps: true });
+export const Service = mongoose.models.Service || mongoose.model<IService>("Service", ServiceSchema);
+
+// StockLog
+export interface IStockLog extends Document {
+  itemId: string;
+  itemName: string;
+  change: number;
+  type: "IN" | "OUT";
+  reason: string;
+  timestamp: Date;
+}
+const StockLogSchema = new Schema({
+  itemId: String,
+  itemName: String,
+  change: Number,
+  type: { type: String, enum: ["IN", "OUT"] },
+  reason: String,
+  timestamp: { type: Date, default: Date.now }
+}, { timestamps: true });
+export const StockLog = mongoose.models.StockLog || mongoose.model<IStockLog>("StockLog", StockLogSchema);
+
+// Treatment
+export interface ITreatment extends Document {
+  name: string;
+  price: number;
+  description?: string;
+}
+const TreatmentSchema = new Schema({
+  name: { type: String, required: true, unique: true },
+  price: Number,
+  description: String
+}, { timestamps: true });
+export const Treatment = mongoose.models.Treatment || mongoose.model<ITreatment>("Treatment", TreatmentSchema);

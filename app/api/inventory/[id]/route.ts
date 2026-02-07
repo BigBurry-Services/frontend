@@ -11,7 +11,7 @@ export async function GET(
   try {
     await dbConnect();
     const { id } = await params;
-    const item = await Inventory.findOne({ id } as any);
+    const item = await Inventory.findById(id).lean();
     if (!item) {
       return NextResponse.json(
         { message: "Medicine not found" },
@@ -38,7 +38,7 @@ export async function PATCH(
       updatedAt: ___,
       ...updates
     } = await req.json();
-    const oldItem = await Inventory.findOne({ id });
+    const oldItem = await Inventory.findById(id).lean();
 
     // Log Stock Changes if batches are updated
     if (oldItem && updates.batches) {
@@ -54,17 +54,19 @@ export async function PATCH(
 
       if (diff !== 0) {
         await StockLog.create({
-          itemId: id,
+          itemID: id,
           itemName: oldItem.name,
-          change: Math.abs(diff),
-          type: diff > 0 ? "IN" : "OUT",
+          quantity: Math.abs(diff),
+          type: diff > 0 ? "addition" : "deduction",
           reason: diff > 0 ? "Stock Added (Update)" : "Stock Removed (Update)",
           timestamp: new Date(),
         });
       }
     }
 
-    const updatedItem = await Inventory.update(id, updates);
+    const updatedItem = await Inventory.findByIdAndUpdate(id, updates, {
+      new: true,
+    }).lean();
     if (!updatedItem) {
       return NextResponse.json(
         { message: "Medicine not found" },
@@ -85,7 +87,7 @@ export async function DELETE(
   try {
     await dbConnect();
     const { id } = await params;
-    const success = await Inventory.delete(id);
+    const success = await Inventory.findByIdAndDelete(id);
     if (!success) {
       return NextResponse.json(
         { message: "Medicine not found" },

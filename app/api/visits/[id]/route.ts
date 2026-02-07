@@ -85,7 +85,9 @@ export async function PATCH(
       }
     }
 
-    const updatedVisit = await Visit.update(id, visit);
+    const updatedVisit = await Visit.findByIdAndUpdate(id, visit, {
+      new: true,
+    }).lean();
     return NextResponse.json(updatedVisit);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -101,7 +103,7 @@ export async function DELETE(
     await dbConnect();
     const { id } = await params;
 
-    await Visit.delete(id);
+    await Visit.findByIdAndDelete(id);
     return NextResponse.json({ message: "Visit deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });

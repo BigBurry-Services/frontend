@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Inventory from "@/models/Inventory";
+import dbConnect from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
+    await dbConnect();
     const { prescriptions } = await request.json();
 
     if (!prescriptions || !Array.isArray(prescriptions)) {
@@ -12,7 +14,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const allInventory = await Inventory.find({});
+    const allInventory = await Inventory.find({}).lean();
     const updates: any[] = [];
 
     // Process each prescription and reduce stock temporarily
@@ -74,16 +76,15 @@ export async function POST(request: NextRequest) {
 
       updates.push({
         id: medicine.id,
-        data: {
-          ...medicine,
-          batches: updatedBatches,
-        },
+        batches: updatedBatches,
       });
     }
 
     // Apply all inventory updates
     for (const update of updates) {
-      await Inventory.update(update.id, update.data);
+      await Inventory.findByIdAndUpdate(update.id, {
+        batches: update.batches,
+      });
     }
 
     return NextResponse.json({

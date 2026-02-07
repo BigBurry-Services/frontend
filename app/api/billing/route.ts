@@ -112,7 +112,7 @@ async function getPendingDues(patientID: string) {
   });
 
   for (const assignment of activeAssignments) {
-    const pkg = await Package.findOne({ id: assignment.packageID });
+    const pkg = await Package.findById(assignment.packageID).lean();
     if (pkg) {
       const item = {
         description: `Package: ${pkg.name}`,
@@ -151,11 +151,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(dues);
       }
 
-      const rawInvoices = await Invoice.find({ patientID });
-      const invoices = rawInvoices.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+      const rawInvoices = await Invoice.find({ patientID })
+        .sort({ createdAt: -1 })
+        .lean();
+      const invoices = rawInvoices;
       const totalPaid = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
       const pendingItems = await getPendingDues(patientID);
       const totalPending = pendingItems.reduce(
@@ -170,11 +169,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const rawInvoices = await Invoice.find();
-    const invoices = rawInvoices.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    const invoices = await Invoice.find().sort({ createdAt: -1 }).lean();
     return NextResponse.json(invoices);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -234,14 +229,16 @@ export async function POST(req: NextRequest) {
           }
 
           // Update inventory
-          await Inventory.update(inventoryItem.id, { batches: newBatches });
+          await Inventory.findByIdAndUpdate(inventoryItem.id, {
+            batches: newBatches,
+          });
 
           // Log Stock Out
           await StockLog.create({
-            itemId: inventoryItem.id,
+            itemID: inventoryItem.id,
             itemName: medName,
-            change: qty,
-            type: "OUT",
+            quantity: qty,
+            type: "deduction",
             reason: `Invoice #${invoiceNumber}`,
             timestamp: new Date(),
           });
@@ -259,7 +256,7 @@ export async function POST(req: NextRequest) {
       const duesForVisit = remainingDues.filter((d) => d.visitID === visitID);
 
       if (duesForVisit.length === 0) {
-        await Visit.update(visitID, {
+        await Visit.findByIdAndUpdate(visitID, {
           paymentStatus: "paid",
           status: "Completed",
         });
@@ -274,7 +271,9 @@ export async function POST(req: NextRequest) {
     ) as string[];
 
     for (const assignmentID of packageAssignmentIDs) {
-      await PatientPackage.update(assignmentID, { status: "completed" });
+      await PatientPackage.findByIdAndUpdate(assignmentID, {
+        status: "completed",
+      });
     }
 
     return NextResponse.json(savedInvoice, { status: 201 });

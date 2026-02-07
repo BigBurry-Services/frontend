@@ -9,13 +9,41 @@ import Patient from "@/models/Patient";
 import Resource from "@/models/Resource";
 import Visit, { VisitStatus } from "@/models/Visit";
 import Service from "@/models/Service";
+import dbConnect from "@/lib/db";
+import AuditLog from "@/models/AuditLog";
+import Expense from "@/models/Expense";
+import Invoice from "@/models/Invoice";
+import Package from "@/models/Package";
+import PatientPackage from "@/models/PatientPackage";
+import StockLog from "@/models/StockLog";
+import Treatment from "@/models/Treatment";
 
 export async function GET() {
   try {
-    const DATA_DIR = path.join(process.cwd(), "data");
+    await dbConnect();
 
-    // 1. Clear existing data
+    // 1. Clear existing data in MongoDB
+    await Promise.all([
+      User.deleteMany({}),
+      Department.deleteMany({}),
+      Category.deleteMany({}),
+      Inventory.deleteMany({}),
+      Patient.deleteMany({}),
+      Resource.deleteMany({}),
+      Visit.deleteMany({}),
+      Service.deleteMany({}),
+      AuditLog.deleteMany({}),
+      Expense.deleteMany({}),
+      Invoice.deleteMany({}),
+      Package.deleteMany({}),
+      PatientPackage.deleteMany({}),
+      StockLog.deleteMany({}),
+      Treatment.deleteMany({}),
+    ]);
+
+    // Also clear JSON files if any (optional, for backward compatibility)
     try {
+      const DATA_DIR = path.join(process.cwd(), "data");
       const files = await fs.readdir(DATA_DIR);
       for (const file of files) {
         if (file.endsWith(".json")) {
@@ -23,7 +51,7 @@ export async function GET() {
         }
       }
     } catch (e) {
-      // Directory usually created by JsonStorage on first write
+      // Ignore
     }
 
     // 2. Add Users

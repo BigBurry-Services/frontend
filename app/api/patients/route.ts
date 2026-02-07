@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(newPatient, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    console.error("DEBUG: POST /api/patients error:", error);
+    return NextResponse.json(
+      { message: error.message, stack: error.stack },
+      { status: 500 },
+    );
   }
 }

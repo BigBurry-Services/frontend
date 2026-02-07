@@ -16,7 +16,9 @@ export async function PATCH(
     const resource = await Resource.findOne({ resourceID: id });
     const actualId = resource ? resource.id : id;
 
-    const updatedResource = await Resource.update(actualId, body);
+    const updatedResource = await Resource.findByIdAndUpdate(actualId, body, {
+      new: true,
+    }).lean();
 
     if (!updatedResource) {
       return NextResponse.json(
@@ -50,7 +52,7 @@ export async function DELETE(
       );
     }
 
-    const deleted = await Resource.delete(actualId);
+    const deleted = await Resource.findByIdAndDelete(actualId);
 
     if (!deleted) {
       return NextResponse.json(

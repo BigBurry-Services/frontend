@@ -57,7 +57,8 @@ export async function POST(
     const documents = patient.documents || [];
     documents.push(newDoc);
 
-    await Patient.update(patient.id, { documents });
+    patient.documents = documents;
+    await patient.save();
 
     return NextResponse.json(newDoc, { status: 201 });
   } catch (error: any) {
@@ -113,7 +114,8 @@ export async function DELETE(
     }
 
     documents.splice(docIndex, 1);
-    await Patient.update(patient.id, { documents });
+    patient.documents = documents;
+    await patient.save();
 
     return NextResponse.json({ message: "Document deleted" });
   } catch (error: any) {

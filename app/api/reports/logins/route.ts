@@ -7,16 +7,11 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     // Fetch logs (filter for LOGIN/LOGOUT just in case we add others later)
-    const logs = await AuditLog.find({});
-    const authLogs = logs.filter(
-      (l: any) => l.action === "LOGIN" || l.action === "LOGOUT",
-    );
-
-    // Sort by timestamp desc
-    authLogs.sort(
-      (a: any, b: any) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
+    const authLogs = await AuditLog.find({
+      action: { $in: ["LOGIN", "LOGOUT"] },
+    })
+      .sort({ timestamp: -1 })
+      .lean();
 
     return NextResponse.json(authLogs);
   } catch (error: any) {

@@ -6,9 +6,7 @@ import Department from "@/models/Department";
 export async function GET() {
   try {
     await dbConnect();
-    const departments = await Department.find();
-    // Manually sort by name
-    departments.sort((a, b) => a.name.localeCompare(b.name));
+    const departments = await Department.find().sort({ name: 1 }).lean();
     return NextResponse.json(departments);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
@@ -36,7 +34,7 @@ export async function DELETE(req: NextRequest) {
     const id = searchParams.get("id");
     if (!id)
       return NextResponse.json({ message: "ID required" }, { status: 400 });
-    await Department.delete(id);
+    await Department.findByIdAndDelete(id);
     return NextResponse.json({ message: "Deleted successfully" });
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });

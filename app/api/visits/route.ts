@@ -16,13 +16,14 @@ export async function GET(req: NextRequest) {
     if (patientID) filter.patientID = patientID;
     if (status) filter.status = status;
 
-    const rawVisits = await Visit.find(filter);
-    const visits = rawVisits.sort(
-      (a, b) => (a.tokenNumber || 0) - (b.tokenNumber || 0),
-    );
+    const visits = await Visit.find(filter).sort({ tokenNumber: 1 }).lean();
     return NextResponse.json(visits);
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    console.error("DEBUG: GET /api/visits error:", error);
+    return NextResponse.json(
+      { message: error.message, stack: error.stack },
+      { status: 500 },
+    );
   }
 }
 

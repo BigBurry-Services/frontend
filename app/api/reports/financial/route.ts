@@ -7,8 +7,10 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    const invoices = await Invoice.find({});
-    const expenses = await Expense.find({});
+    const invoices = await Invoice.find({}).sort({ createdAt: -1 }).lean();
+    const expenses = await Expense.find({})
+      .sort({ date: -1, createdAt: -1 })
+      .lean();
 
     const reportData: any[] = [];
 
@@ -31,11 +33,6 @@ export async function GET(req: NextRequest) {
         amount: exp.amount,
       });
     });
-
-    // Sort by date desc
-    reportData.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
 
     return NextResponse.json(reportData);
   } catch (error: any) {

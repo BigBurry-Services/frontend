@@ -9,8 +9,8 @@ export async function GET(req: NextRequest) {
     await dbConnect();
 
     // Fetch all related data
-    const visits = await Visit.find({});
-    const patients = await Patient.find({});
+    const visits = await Visit.find({}).sort({ createdAt: -1 }).lean();
+    const patients = await Patient.find({}).lean();
     // We might need to fetch doctors (Users) to map IDs to Names, or rely on doctorName in consultations
     // Visit model has doctorIDs and consultations[{doctorName}]
 
@@ -40,12 +40,6 @@ export async function GET(req: NextRequest) {
         token: visit.tokenNumber,
       };
     });
-
-    // Sort by date desc
-    reportData.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
 
     return NextResponse.json(reportData);
   } catch (error: any) {

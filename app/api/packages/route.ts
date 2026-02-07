@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import Package from "../../../models/Package";
+import dbConnect from "@/lib/db";
 
 export async function GET() {
-  const packages = await Package.find({});
+  await dbConnect();
+  const packages = await Package.find({}).lean();
   return NextResponse.json(packages);
 }
 
 export async function POST(req: Request) {
   try {
+    await dbConnect();
     const body = await req.json();
     const { name, totalPrice, items, description } = body;
 
@@ -36,6 +39,7 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
+    await dbConnect();
     const body = await req.json();
     const { id, name, totalPrice, items, description } = body;
 
@@ -46,12 +50,16 @@ export async function PUT(req: Request) {
       );
     }
 
-    const updatedPackage = await Package.update(id, {
-      name,
-      totalPrice: Number(totalPrice),
-      items,
-      description,
-    });
+    const updatedPackage = await Package.findByIdAndUpdate(
+      id,
+      {
+        name,
+        totalPrice: Number(totalPrice),
+        items,
+        description,
+      },
+      { new: true },
+    ).lean();
 
     if (!updatedPackage) {
       return NextResponse.json(
@@ -70,6 +78,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  await dbConnect();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
@@ -77,6 +86,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ message: "ID is required" }, { status: 400 });
   }
 
-  await Package.delete(id);
+  await Package.findByIdAndDelete(id);
   return NextResponse.json({ message: "Package deleted" });
 }

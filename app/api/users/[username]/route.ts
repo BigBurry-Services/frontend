@@ -44,7 +44,11 @@ export async function PATCH(
       }
     }
 
-    const updatedUser = await User.update(user.id, updates);
+    const updatedUser = await User.findByIdAndUpdate(user._id, updates, {
+      new: true,
+    })
+      .select("-password")
+      .lean();
 
     if (!updatedUser) {
       return NextResponse.json(
@@ -53,8 +57,7 @@ export async function PATCH(
       );
     }
 
-    const { password, ...userWithoutPassword } = updatedUser;
-    return NextResponse.json(userWithoutPassword);
+    return NextResponse.json(updatedUser);
   } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
@@ -74,7 +77,7 @@ export async function DELETE(
       return NextResponse.json({ message: "User not found" }, { status: 404 });
     }
 
-    await User.delete(user.id);
+    await User.findByIdAndDelete(user._id);
 
     return NextResponse.json({ message: "User deleted successfully" });
   } catch (error: any) {

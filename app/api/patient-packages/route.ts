@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import PatientPackage from "../../../models/PatientPackage";
+import dbConnect from "@/lib/db";
 
 export async function GET() {
   try {
-    const assignments = await PatientPackage.find({});
+    await dbConnect();
+    const assignments = await PatientPackage.find({}).lean();
     return NextResponse.json(assignments);
   } catch (error) {
     return NextResponse.json(
@@ -15,6 +17,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    await dbConnect();
     const body = await req.json();
     const { patientID, patientName, packageID, packageName, startDate } = body;
 
@@ -44,6 +47,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  await dbConnect();
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
 
@@ -51,6 +55,6 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ message: "ID is required" }, { status: 400 });
   }
 
-  await PatientPackage.delete(id);
+  await PatientPackage.findByIdAndDelete(id);
   return NextResponse.json({ message: "Assignment removed" });
 }

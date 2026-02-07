@@ -1,8 +1,44 @@
-/**
- * This file is now a no-op as the application has migrated to JSON-based local storage.
- */
+import mongoose from "mongoose";
+
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  throw new Error(
+    "Please define the MONGODB_URI environment variable inside .env",
+  );
+}
+
+let cached = (global as any).mongoose;
+
+if (!cached) {
+  cached = (global as any).mongoose = { conn: null, promise: null };
+}
+
 async function dbConnect() {
-  return true;
+  if (cached.conn) {
+    return cached.conn;
+  }
+
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+    };
+
+    cached.promise = mongoose.connect(MONGODB_URI!, opts).then((m) => {
+      return m;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+    console.log("MongoDB connected successfully");
+  } catch (e) {
+    console.error("MongoDB connection error:", e);
+    cached.promise = null;
+    throw e;
+  }
+
+  return cached.conn;
 }
 
 export default dbConnect;

@@ -16,12 +16,16 @@ export async function PATCH(
     const resource = await Resource.findOne({ resourceID: id });
     const actualId = resource ? resource.id : id;
 
-    const updatedResource = await Resource.update(actualId, {
-      isOccupied: body.isOccupied,
-      currentPatientID: body.patientID || null,
-      admissionDate: body.admissionDate || null,
-      expectedDischargeDate: body.expectedDischargeDate || null,
-    });
+    const updatedResource = await Resource.findByIdAndUpdate(
+      actualId,
+      {
+        isOccupied: body.isOccupied,
+        currentPatientID: body.patientID || null,
+        admissionDate: body.admissionDate || null,
+        expectedDischargeDate: body.expectedDischargeDate || null,
+      },
+      { new: true },
+    ).lean();
 
     if (!updatedResource) {
       return NextResponse.json(

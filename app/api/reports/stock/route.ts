@@ -6,12 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     await dbConnect();
 
-    const logs = await StockLog.find({});
-    // Sort by timestamp desc
-    logs.sort(
-      (a: any, b: any) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
+    const logs = await StockLog.find({}).sort({ timestamp: -1 }).lean();
 
     return NextResponse.json(logs);
   } catch (error: any) {
