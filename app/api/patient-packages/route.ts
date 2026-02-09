@@ -19,7 +19,14 @@ export async function POST(req: Request) {
   try {
     await dbConnect();
     const body = await req.json();
-    const { patientID, patientName, packageID, packageName, startDate } = body;
+    const {
+      patientID,
+      patientName,
+      packageID,
+      packageName,
+      startDate,
+      endDate,
+    } = body;
 
     if (!patientID || !packageID || !startDate) {
       return NextResponse.json(
@@ -34,6 +41,7 @@ export async function POST(req: Request) {
       packageID,
       packageName,
       startDate,
+      endDate,
       status: "active",
     });
 

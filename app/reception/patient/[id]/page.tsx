@@ -93,8 +93,10 @@ export default function PatientDetailsPage({
         ...prev,
         documents: [...(prev.documents || []), res.data],
       }));
-    } catch (error) {
-      alert("Failed to upload document");
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.message || "Failed to upload document";
+      alert(errorMessage);
     } finally {
       setIsUploading(false);
     }

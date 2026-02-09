@@ -36,14 +36,21 @@ export async function POST(
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const patientUploadDir = path.join(UPLOAD_BASE, patient.id);
+    const patientUploadDir = path.join(
+      UPLOAD_BASE,
+      patient.id || patient._id.toString(),
+    );
     await fs.mkdir(patientUploadDir, { recursive: true });
 
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
+    // Sanitize filename: remove original path separators and other potentially problematic characters for Windows
+    const sanitizedOriginalName = file.name
+      .replace(/[\\/:*?"<>|]/g, "_") // Remove Windows illegal chars
+      .replace(/\s+/g, "_");
+    const fileName = `${Date.now()}-${sanitizedOriginalName}`;
     const filePath = path.join(patientUploadDir, fileName);
     await fs.writeFile(filePath, buffer);
 
-    const fileUrl = `/uploads/patients/${patient.id}/${fileName}`;
+    const fileUrl = `/uploads/patients/${patient.id || patient._id.toString()}/${fileName}`;
 
     const newDoc = {
       id: Date.now().toString(),
@@ -54,15 +61,24 @@ export async function POST(
       uploadedAt: new Date(),
     };
 
-    const documents = patient.documents || [];
-    documents.push(newDoc);
+    // Use findOneAndUpdate with $push for atomic and reliable update
+    const updatedPatient = await Patient.findOneAndUpdate(
+      { _id: patient._id },
+      { $push: { documents: newDoc } },
+      { new: true },
+    );
 
-    patient.documents = documents;
-    await patient.save();
+    if (!updatedPatient) {
+      throw new Error("Failed to update patient documents");
+    }
 
     return NextResponse.json(newDoc, { status: 201 });
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    console.error("DEBUG: POST /api/patients/[id]/documents error:", error);
+    return NextResponse.json(
+      { message: error.message || "Internal server error during upload" },
+      { status: 500 },
+    );
   }
 }
 

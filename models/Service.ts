@@ -3,15 +3,17 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IService extends Document {
   id: string;
   name: string;
-  category: string;
+  category?: string;
   price: number;
+  description?: string;
 }
 
 const ServiceSchema: Schema = new Schema(
   {
     name: { type: String, required: true, unique: true },
-    category: { type: String, required: true },
+    category: { type: String },
     price: { type: Number, required: true },
+    description: { type: String },
   },
   {
     timestamps: true,

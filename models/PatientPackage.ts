@@ -3,8 +3,11 @@ import mongoose, { Schema, Document, Model } from "mongoose";
 export interface IPatientPackage extends Document {
   id: string;
   patientID: string;
+  patientName: string;
   packageID: string;
+  packageName: string;
   startDate: Date;
+  endDate?: Date;
   status: "active" | "completed" | "cancelled";
   remainingItems: string[];
 }
@@ -12,8 +15,11 @@ export interface IPatientPackage extends Document {
 const PatientPackageSchema: Schema = new Schema(
   {
     patientID: { type: String, required: true },
+    patientName: { type: String, required: true },
     packageID: { type: String, required: true },
+    packageName: { type: String, required: true },
     startDate: { type: Date, default: Date.now },
+    endDate: { type: Date },
     status: {
       type: String,
       enum: ["active", "completed", "cancelled"],

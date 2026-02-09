@@ -16,6 +16,7 @@ export interface IPatient extends Document {
   age: number;
   gender: string;
   mobile: string;
+  guardianName?: string;
   address?: string;
   bloodGroup?: string;
   emergencyContact?: string;
@@ -25,6 +26,18 @@ export interface IPatient extends Document {
   updatedAt: Date;
 }
 
+const PatientDocumentSchema = new Schema(
+  {
+    id: String,
+    name: String,
+    type: String,
+    url: String,
+    size: Number,
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
 const PatientSchema: Schema = new Schema(
   {
     patientID: { type: String, required: true, unique: true },
@@ -32,20 +45,12 @@ const PatientSchema: Schema = new Schema(
     age: { type: Number, required: true },
     gender: { type: String, required: true },
     mobile: { type: String, required: true },
+    guardianName: { type: String },
     address: { type: String },
     bloodGroup: { type: String },
     emergencyContact: { type: String },
     medicalHistory: { type: [String], default: [] },
-    documents: [
-      {
-        id: String,
-        name: String,
-        type: String,
-        url: String,
-        size: Number,
-        uploadedAt: { type: Date, default: Date.now },
-      },
-    ],
+    documents: { type: [PatientDocumentSchema], default: [] },
   },
   {
     timestamps: true,
@@ -61,6 +66,7 @@ const PatientSchema: Schema = new Schema(
   },
 );
 
+// Aggressively clear model cache for Next.js hot-reloading
 if (mongoose.models.Patient) {
   delete (mongoose as any).models.Patient;
 }

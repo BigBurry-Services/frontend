@@ -4,6 +4,7 @@ export interface IInvoice extends Document {
   id: string;
   invoiceNumber: string;
   patientID: string;
+  patientName: string;
   items: {
     description: string;
     amount: number;
@@ -14,7 +15,11 @@ export interface IInvoice extends Document {
   paidAmount: number;
   balanceAmount: number;
   status: "paid" | "partial" | "unpaid";
-  paymentMethod?: string;
+  paymentMode?: string;
+  paymentBreakdown?: {
+    mode: string;
+    amount: number;
+  }[];
   createdAt: Date;
 }
 
@@ -22,6 +27,7 @@ const InvoiceSchema: Schema = new Schema(
   {
     invoiceNumber: { type: String, required: true },
     patientID: { type: String, required: true },
+    patientName: { type: String, required: true },
     items: [
       {
         description: { type: String, required: true },
@@ -38,7 +44,13 @@ const InvoiceSchema: Schema = new Schema(
       enum: ["paid", "partial", "unpaid"],
       default: "unpaid",
     },
-    paymentMethod: String,
+    paymentMode: String,
+    paymentBreakdown: [
+      {
+        mode: String,
+        amount: Number,
+      },
+    ],
   },
   {
     timestamps: true,
